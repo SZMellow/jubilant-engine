@@ -25,9 +25,10 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector, val selecte
 }
 
 @Composable
-fun MainScreen(modifier: Modifier = Modifier) {
+fun MainScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
     var selectedItem by remember { mutableStateOf(0) }
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
+    var currentScreen by remember { mutableStateOf("main") } // main, checkout
 
     val items = listOf(
         BottomNavItem.Home,
@@ -38,58 +39,70 @@ fun MainScreen(modifier: Modifier = Modifier) {
     )
 
     val cartBadgeCount by remember {
-        derivedStateOf { CartManager.items.sumOf { it.quantity } }
+        derivedStateOf { CartManager.items.size }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            bottomBar = {
-                NavigationBar(
-                    containerColor = colorResource(id = R.color.green2),
-                    contentColor = Color.White
-                ) {
-                    items.forEachIndexed { index, item ->
-                        NavigationBarItem(
-                            icon = {
-                                val badgeCount = if (item == BottomNavItem.Cart) cartBadgeCount else 0
-                                Box {
-                                    Icon(
-                                        if (selectedItem == index) item.selectedIcon else item.icon,
-                                        contentDescription = item.title,
-                                        tint = Color.White
-                                    )
-                                    if (badgeCount > 0) {
-                                        Badge(
-                                            modifier = Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-8).dp),
-                                            containerColor = Color.Red,
-                                            contentColor = Color.White
-                                        ) {
-                                            Text(badgeCount.toString(), fontSize = 10.sp)
+        if (currentScreen == "checkout") {
+            CheckoutScreen(
+                onBack = { currentScreen = "main" },
+                onOrderPlaced = {
+                    currentScreen = "main"
+                    selectedItem = 3 // Go to History
+                }
+            )
+        } else {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                bottomBar = {
+                    NavigationBar(
+                        containerColor = colorResource(id = R.color.green2),
+                        contentColor = Color.White
+                    ) {
+                        items.forEachIndexed { index, item ->
+                            NavigationBarItem(
+                                icon = {
+                                    val badgeCount = if (item == BottomNavItem.Cart) cartBadgeCount else 0
+                                    Box {
+                                        Icon(
+                                            if (selectedItem == index) item.selectedIcon else item.icon,
+                                            contentDescription = item.title,
+                                            tint = Color.White
+                                        )
+                                        if (badgeCount > 0) {
+                                            Badge(
+                                                modifier = Modifier.align(Alignment.TopEnd).offset(x = 8.dp, y = (-8).dp),
+                                                containerColor = Color.Red,
+                                                contentColor = Color.White
+                                            ) {
+                                                Text(badgeCount.toString(), fontSize = 10.sp)
+                                            }
                                         }
                                     }
-                                }
-                            },
-                            selected = selectedItem == index,
-                            onClick = { 
-                                selectedItem = index 
-                                selectedProduct = null // Reset details view when switching tabs
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color.White,
-                                unselectedIconColor = Color.White.copy(alpha = 0.6f),
-                                indicatorColor = Color.Transparent
+                                },
+                                selected = selectedItem == index,
+                                onClick = { 
+                                    selectedItem = index 
+                                    selectedProduct = null // Reset details view when switching tabs
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = Color.White,
+                                    unselectedIconColor = Color.White.copy(alpha = 0.6f),
+                                    indicatorColor = Color.Transparent
+                                )
                             )
-                        )
+                        }
                     }
                 }
+            ) { innerPadding ->
+                ContentScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    selectedIndex = selectedItem,
+                    onProductClick = { selectedProduct = it },
+                    onCheckout = { currentScreen = "checkout" },
+                onExit = onExit
+                )
             }
-        ) { innerPadding ->
-            ContentScreen(
-                modifier = Modifier.padding(innerPadding),
-                selectedIndex = selectedItem,
-                onProductClick = { selectedProduct = it }
-            )
         }
 
         // Overlay Detail Screen
@@ -108,14 +121,20 @@ fun MainScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ContentScreen(modifier: Modifier = Modifier, selectedIndex: Int, onProductClick: (Product) -> Unit) {
+fun ContentScreen(
+    modifier: Modifier = Modifier, 
+    selectedIndex: Int, 
+    onProductClick: (Product) -> Unit,
+    onCheckout: () -> Unit,
+    onExit: () -> Unit
+) {
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         when (selectedIndex) {
             0 -> HomeScreen(onProductClick = onProductClick)
-            1 -> CartScreen()
-            2 -> BookmarksScreen()
-            3 -> OrdersScreen(isHistory = true)
-            4 -> FAQScreen()
+            1 -> CartScreen(onProductClick = onProductClick, onCheckout = onCheckout)
+            2 -> BookmarksScreen(onProductClick = onProductClick)
+            3 -> OrdersScreen()
+            4 -> FAQScreen(onExit = onExit)
             else -> Text(text = "Page $selectedIndex")
         }
     }

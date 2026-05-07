@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -27,7 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.example.mapaani3.ui.theme.MapaAni3Theme
 
 @Composable
-fun FAQScreen() {
+fun FAQScreen(onExit: () -> Unit) {
     var selectedMainTab by remember { mutableStateOf("FAQ") }
     var selectedCategory by remember { mutableStateOf("General") }
 
@@ -48,6 +49,9 @@ fun FAQScreen() {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
                 Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = onExit) {
+                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Exit", tint = Color.White)
+                }
             }
             Text(
                 text = "Help & FAQs",
@@ -141,39 +145,29 @@ fun FAQScreen() {
 
                 // FAQ List
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    FAQItem(
-                        question = "How do i track my order status in real-time?",
-                        answer = "In Order for you to track your order in real-time"
+                    val faqs = listOf(
+                        FAQData("General", "How do i track my order status in real-time?", "In Order for you to track your order in real-time"),
+                        FAQData("General", "Are there any service fees?", "There is only a very small service fee."),
+                        FAQData("Account", "How do i report bad crops", "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
+                        FAQData("Account", "How do i reset my password?", "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
+                        FAQData("Services", "What payment methods do you accept?", "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
+                        FAQData("Services", "What is the policy for cancellation or refunds?", "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
+                        FAQData("Services", "How are delivery fees calculated?", "Lorem ipsum dolor sit amet, consectetur adipiscing elit.")
                     )
-                    FAQItem(
-                        question = "Are there any service fees?",
-                        answer = "There is only a very small service fee."
-                    )
-                    FAQItem(
-                        question = "How do i report bad crops",
-                        answer = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent pellentesque congue lorem, vel tincidunt tortor placerat a. Proin ac diam quam. Aenean in sagittis magna, ut feugiat diam."
-                    )
-                    FAQItem(
-                        question = "How do i reset my password?",
-                        answer = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent pellentesque congue lorem, vel tincidunt tortor placerat a. Proin ac diam quam. Aenean in sagittis magna, ut feugiat diam."
-                    )
-                    FAQItem(
-                        question = "What payment methods(credit cards, digital wallet) do you accept?",
-                        answer = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent pellentesque congue lorem, vel tincidunt tortor placerat a. Proin ac diam quam. Aenean in sagittis magna, ut feugiat diam."
-                    )
-                    FAQItem(
-                        question = "What is the policy for cancellation or refunds?",
-                        answer = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent pellentesque congue lorem, vel tincidunt tortor placerat a. Proin ac diam quam. Aenean in sagittis magna, ut feugiat diam."
-                    )
-                    FAQItem(
-                        question = "How are delivery fees calculated for different areas?",
-                        answer = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent pellentesque congue lorem, vel tincidunt tortor placerat a. Proin ac diam quam. Aenean in sagittis magna, ut feugiat diam."
-                    )
+
+                    faqs.filter { it.category == selectedCategory }.forEach { faq ->
+                        FAQItem(
+                            question = faq.question,
+                            answer = faq.answer
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+data class FAQData(val category: String, val question: String, val answer: String)
 
 @Composable
 fun TabButton(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -235,6 +229,6 @@ fun FAQItem(question: String, answer: String) {
 @Composable
 fun FAQScreenPreview() {
     MapaAni3Theme {
-        FAQScreen()
+        FAQScreen(onExit = {})
     }
 }

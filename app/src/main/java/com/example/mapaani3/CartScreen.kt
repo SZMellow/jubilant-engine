@@ -2,6 +2,7 @@ package com.example.mapaani3
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun CartScreen() {
+fun CartScreen(onProductClick: (Product) -> Unit, onCheckout: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -70,14 +71,14 @@ fun CartScreen() {
                 Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
                     LazyColumn(modifier = Modifier.weight(1f)) {
                         items(CartManager.items) { item ->
-                            CartItemRow(item)
+                            CartItemRow(item, onProductClick)
                             Spacer(modifier = Modifier.height(16.dp))
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    val total = CartManager.items.sumOf { it.product.price * it.quantity }
+                    val total = CartManager.items.sumOf { it.product.price * it.product.kilos }
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -96,7 +97,7 @@ fun CartScreen() {
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
-                        onClick = { /* Handle checkout */ },
+                        onClick = onCheckout,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -114,9 +115,11 @@ fun CartScreen() {
 }
 
 @Composable
-fun CartItemRow(item: CartItem) {
+fun CartItemRow(item: CartItem, onProductClick: (Product) -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onProductClick(item.product) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -144,7 +147,13 @@ fun CartItemRow(item: CartItem) {
                     color = colorResource(id = R.color.green1)
                 )
                 Text(
-                    text = "P${item.product.price} x ${item.quantity}",
+                    text = "${item.product.kilos} kg",
+                    fontSize = 14.sp,
+                    color = colorResource(id = R.color.green2),
+                    fontWeight = FontWeight.SemiBold
+                )
+                Text(
+                    text = "P${String.format("%.2f", item.product.price * item.product.kilos)}",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )

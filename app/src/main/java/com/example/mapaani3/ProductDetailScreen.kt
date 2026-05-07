@@ -73,7 +73,7 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
                         color = colorResource(id = R.color.green1)
                     )
                     Text(
-                        text = "P${product.price}",
+                        text = "P${String.format("%.2f", product.price * product.kilos)}",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = colorResource(id = R.color.green2)
@@ -86,6 +86,15 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
                     Text(text = "Rating: ${product.rating}", fontSize = 16.sp, color = Color.Gray)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(text = "★", color = colorResource(id = R.color.yellowrice), fontSize = 16.sp)
+                    
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    Text(
+                        text = "Available: ${product.kilos} kg",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorResource(id = R.color.green1)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -106,17 +115,19 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                Button(
-                    onClick = onAddToCart,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = colorResource(id = R.color.green2)
-                    ),
-                    shape = RoundedCornerShape(28.dp)
-                ) {
-                    Text(text = "Add to Cart", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                if (UserSession.currentUserType == UserType.BUYER) {
+                    Button(
+                        onClick = onAddToCart,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorResource(id = R.color.green2)
+                        ),
+                        shape = RoundedCornerShape(28.dp)
+                    ) {
+                        Text(text = "Add to Cart", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

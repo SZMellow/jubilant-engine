@@ -28,13 +28,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mapaani3.ui.theme.MapaAni3Theme
 
+import androidx.compose.material.icons.filled.Add
+
 @Composable
 fun HomeScreen(onProductClick: (Product) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<ProductCategory?>(null) }
+    var showAddProductDialog by remember { mutableStateOf(false) }
 
-    val filteredProducts = remember(searchQuery, selectedCategory) {
-        SampleData.products.filter { product ->
+    val filteredProducts = remember(searchQuery, selectedCategory, ProductRepository.allProducts.size) {
+        ProductRepository.allProducts.filter { product ->
             val matchesSearch = product.name.contains(searchQuery, ignoreCase = true)
             val matchesCategory = selectedCategory == null || product.category == selectedCategory
             matchesSearch && matchesCategory
@@ -45,70 +48,182 @@ fun HomeScreen(onProductClick: (Product) -> Unit) {
     val recommended = remember(filteredProducts) { filteredProducts.filter { it.isRecommended } }
     val others = remember(filteredProducts) { filteredProducts.filter { !it.isBestSeller && !it.isRecommended } }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colorResource(id = R.color.green2))
-            .verticalScroll(rememberScrollState())
-    ) {
-        // Header Section
-        HomeHeader(
-            searchQuery = searchQuery,
-            onSearchChange = { searchQuery = it }
-        )
-
-        // Content Card
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-            color = Color.White
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(colorResource(id = R.color.green2))
+                .verticalScroll(rememberScrollState())
         ) {
-            Column(
-                modifier = Modifier
-                    .padding(24.dp)
+            // Header Section
+            HomeHeader(
+                searchQuery = searchQuery,
+                onSearchChange = { searchQuery = it }
+            )
+
+            // Content Card
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+                color = Color.White
             ) {
-                // Category Row
-                CategoryRow(
-                    selectedCategory = selectedCategory,
-                    onCategorySelect = { category ->
-                        selectedCategory = if (selectedCategory == category) null else category
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                ) {
+                    // Category Row
+                    CategoryRow(
+                        selectedCategory = selectedCategory,
+                        onCategorySelect = { category ->
+                            selectedCategory = if (selectedCategory == category) null else category
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    if (bestSellers.isNotEmpty()) {
+                        // Best Sellers
+                        SectionHeader(title = "Best Sellers", onViewAll = {})
+                        BestSellersRow(items = bestSellers, onProductClick = onProductClick)
+                        Spacer(modifier = Modifier.height(24.dp))
                     }
-                )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                    // Promo Banner
+                    PromoBanner()
 
-                if (bestSellers.isNotEmpty()) {
-                    // Best Sellers
-                    SectionHeader(title = "Best Sellers", onViewAll = {})
-                    BestSellersRow(items = bestSellers, onProductClick = onProductClick)
                     Spacer(modifier = Modifier.height(24.dp))
-                }
 
-                // Promo Banner
-                PromoBanner()
+                    if (recommended.isNotEmpty()) {
+                        // Recommended
+                        SectionHeader(title = "Recommended", onViewAll = {})
+                        RecommendedGrid(items = recommended, onProductClick = onProductClick)
+                        Spacer(modifier = Modifier.height(24.dp))
+                    }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                if (recommended.isNotEmpty()) {
-                    // Recommended
-                    SectionHeader(title = "Recommended", onViewAll = {})
-                    RecommendedGrid(items = recommended, onProductClick = onProductClick)
-                    Spacer(modifier = Modifier.height(24.dp))
-                }
-
-                if (others.isNotEmpty()) {
-                    SectionHeader(title = "More Products", onViewAll = {})
-                    RecommendedGrid(items = others, onProductClick = onProductClick)
-                }
-                
-                if (filteredProducts.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        Text("No products found", color = Color.Gray)
+                    if (others.isNotEmpty()) {
+                        SectionHeader(title = "More Products", onViewAll = {})
+                        RecommendedGrid(items = others, onProductClick = onProductClick)
+                    }
+                    
+                    if (filteredProducts.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                            Text("No products found", color = Color.Gray)
+                        }
                     }
                 }
             }
         }
+
+        // Add Product FAB for Farmers
+        if (UserSession.currentUserType == UserType.FARMER) {
+            FloatingActionButton(
+                onClick = { showAddProductDialog = true },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp),
+                containerColor = colorResource(id = R.color.green2),
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Product")
+            }
+        }
     }
+
+    if (showAddProductDialog) {
+        AddProductDialog(onDismiss = { showAddProductDialog = false })
+    }
+}
+
+@Composable
+fun AddProductDialog(onDismiss: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("") }
+    var kilos by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf(ProductCategory.ROOTS) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add New Product") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Product Name") },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black
+            )
+        )
+        OutlinedTextField(
+            value = price,
+            onValueChange = { price = it },
+            label = { Text("Price per Kilo") },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black
+            )
+        )
+        OutlinedTextField(
+            value = kilos,
+            onValueChange = { kilos = it },
+            label = { Text("Available Kilos") },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black
+            )
+        )
+        OutlinedTextField(
+            value = description,
+            onValueChange = { description = it },
+            label = { Text("Description") },
+            modifier = Modifier.height(100.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black
+            )
+        )
+                
+                Text("Category:", fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    ProductCategory.entries.forEach { category ->
+                        FilterChip(
+                            selected = selectedCategory == category,
+                            onClick = { selectedCategory = category },
+                            label = { Text(category.displayName, fontSize = 10.sp) }
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val newProduct = Product(
+                        id = System.currentTimeMillis().toString(),
+                        name = name,
+                        price = price.toDoubleOrNull() ?: 0.0,
+                        kilos = kilos.toDoubleOrNull() ?: 1.0,
+                        category = selectedCategory,
+                        description = if (description.isNotBlank()) description else "Freshly harvested ${name}.",
+                        imageRes = R.drawable.vegertable // Default image for newly added products
+                    )
+                    ProductRepository.addProduct(newProduct)
+                    onDismiss()
+                },
+                enabled = name.isNotBlank() && price.isNotBlank()
+            ) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
 }
 
 @Composable
@@ -258,7 +373,7 @@ fun BestSellersRow(items: List<Product>, onProductClick: (Product) -> Unit) {
                             .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 4.dp, vertical = 2.dp)
                     ) {
-                        Text(text = "P${product.price}", color = Color.White, fontSize = 10.sp)
+                        Text(text = "P${String.format("%.2f", product.price * product.kilos)}", color = Color.White, fontSize = 10.sp)
                     }
                 }
             }
@@ -305,10 +420,7 @@ fun RecommendedGrid(items: List<Product>, onProductClick: (Product) -> Unit) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 rowItems.forEach { product ->
                     RecommendedItem(
-                        name = product.name,
-                        price = "P${product.price}",
-                        image = product.imageRes,
-                        rating = product.rating.toString(),
+                        product = product,
                         modifier = Modifier.weight(1f).clickable { onProductClick(product) }
                     )
                 }
@@ -321,7 +433,7 @@ fun RecommendedGrid(items: List<Product>, onProductClick: (Product) -> Unit) {
 }
 
 @Composable
-fun RecommendedItem(name: String, price: String, image: Int, rating: String, modifier: Modifier = Modifier) {
+fun RecommendedItem(product: Product, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -329,8 +441,8 @@ fun RecommendedItem(name: String, price: String, image: Int, rating: String, mod
     ) {
         Box {
             Image(
-                painter = painterResource(id = image),
-                contentDescription = name,
+                painter = painterResource(id = product.imageRes),
+                contentDescription = product.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -346,7 +458,7 @@ fun RecommendedItem(name: String, price: String, image: Int, rating: String, mod
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = rating, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(text = product.rating.toString(), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(text = "★", color = colorResource(id = R.color.yellowrice), fontSize = 10.sp)
                 }
@@ -360,7 +472,7 @@ fun RecommendedItem(name: String, price: String, image: Int, rating: String, mod
                     .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                     .padding(horizontal = 4.dp, vertical = 2.dp)
             ) {
-                Text(text = price, color = Color.White, fontSize = 10.sp)
+                Text(text = "P${String.format("%.2f", product.price * product.kilos)}", color = Color.White, fontSize = 10.sp)
             }
         }
     }

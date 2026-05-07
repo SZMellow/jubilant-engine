@@ -20,6 +20,8 @@ import androidx.compose.material.icons.outlined.ShoppingBasket
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.ShoppingBasket
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -74,7 +76,10 @@ fun FarmerMain(onExit: () -> Unit) {
                             "take_photo" -> TakeProductPhotoScreen(
                                 onBack = { currentFarmerScreen = "confirm_listing" },
                                 onTakePhoto = { 
-                                    draftListing.forEach { FarmerManager.addListing(it) }
+                                    draftListing.forEach { product ->
+                                        ProductRepository.addProduct(product)
+                                        FarmerManager.addListing(product)
+                                    }
                                     currentFarmerScreen = "success" 
                                 }
                             )
@@ -86,7 +91,7 @@ fun FarmerMain(onExit: () -> Unit) {
                             )
                         }
                     }
-                    "favorites" -> BookmarksScreen()
+                    "favorites" -> BookmarksScreen(onProductClick = { selectedProduct = it })
                     "orders" -> FarmerOrdersScreen()
                     "settings" -> FarmerSettingsScreen(onExit = onExit)
                 }
@@ -119,6 +124,11 @@ fun FarmerMain(onExit: () -> Unit) {
 
 @Composable
 fun FarmerOrdersScreen() {
+    var selectedTab by remember { mutableStateOf("Active") }
+    val visibleTabs = listOf("Active", "Completed", "Cancelled")
+    
+    val filteredOrders = OrderManager.farmerOrders.filter { it.status == selectedTab }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -131,7 +141,7 @@ fun FarmerOrdersScreen() {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "My Listed Crops",
+                text = "Product Orders",
                 color = Color.White,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold
@@ -143,24 +153,108 @@ fun FarmerOrdersScreen() {
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
             color = Color.White
         ) {
-            if (FarmerManager.myListings.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("You haven't listed any crops yet.", color = Color.Gray)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+            Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+                // Status Tabs
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    items(FarmerManager.myListings) { product ->
-                        ListingSummaryItem(
-                            name = product.name,
-                            date = "Active Listing",
-                            price = "P${String.format("%.2f", product.price)}",
-                            quantity = "Available",
-                            imageRes = product.imageRes
-                        )
+                    visibleTabs.forEach { tab ->
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { selectedTab = tab }
+                        ) {
+                            Text(
+                                text = tab,
+                                color = if (selectedTab == tab) colorResource(id = R.color.green1) else Color.Gray,
+                                fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
+                                fontSize = 16.sp
+                            )
+                            if (selectedTab == tab) {
+                                Box(
+                                    modifier = Modifier
+                                        .padding(top = 4.dp)
+                                        .size(width = 40.dp, height = 2.dp)
+                                        .background(colorResource(id = R.color.green1))
+                                )
+                            }
+                        }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                if (filteredOrders.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("No $selectedTab orders yet.", color = Color.Gray)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(filteredOrders) { order ->
+                            FarmerOrderItem(order)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FarmerOrderItem(order: Order) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = colorResource(id = R.color.green2A).copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = order.id, fontWeight = FontWeight.Bold, color = colorResource(id = R.color.green1))
+                Text(text = order.date, fontSize = 12.sp, color = Color.Gray)
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            order.items.forEach { cartItem ->
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(text = "${cartItem.product.name} (${cartItem.product.kilos} kg)", fontSize = 14.sp)
+                    Text(text = "P${String.format("%.2f", cartItem.product.price * cartItem.product.kilos)}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = Color.Gray.copy(alpha = 0.3f))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "Total Earned:", fontWeight = FontWeight.Bold)
+                Text(
+                    text = "P${String.format("%.2f", order.totalPrice)}",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorResource(id = R.color.green1)
+                )
+            }
+            
+            if (order.status == "Active") {
+                Spacer(modifier = Modifier.height(12.dp))
+                Button(
+                    onClick = { order.status = "Completed" },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.green2)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Mark as Delivered")
                 }
             }
         }
@@ -303,7 +397,7 @@ fun FarmerSellingListScreen(onAddClick: () -> Unit) {
                                 name = product.name,
                                 date = "Today",
                                 price = "P${String.format("%.2f", product.price)}",
-                                quantity = "Available",
+                                quantity = "${product.kilos} kg",
                                 imageRes = product.imageRes,
                                 onCancel = { FarmerManager.removeListing(product.id) }
                             )
@@ -320,6 +414,8 @@ fun FarmerSellingListScreen(onAddClick: () -> Unit) {
 fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
     var name by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
+    var kilos by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(ProductCategory.ROOTS) }
 
     Column(
@@ -355,7 +451,10 @@ fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
             color = Color.White
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(24.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 TextField(
@@ -365,18 +464,48 @@ fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black
                     )
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 TextField(
                     value = price,
                     onValueChange = { price = it },
-                    label = { Text("Price (P)") },
+                    label = { Text("Price per Kilo (P)") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = TextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                TextField(
+                    value = kilos,
+                    onValueChange = { kilos = it },
+                    label = { Text("Available Kilos") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                TextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth().height(100.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black
                     )
                 )
                 Spacer(modifier = Modifier.height(24.dp))
@@ -394,7 +523,7 @@ fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
                     }
                 }
                 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(32.dp))
                 
                 Button(
                     onClick = {
@@ -403,6 +532,8 @@ fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
                                 id = UUID.randomUUID().toString(),
                                 name = name,
                                 price = price.toDoubleOrNull() ?: 0.0,
+                                kilos = kilos.toDoubleOrNull() ?: 1.0,
+                                description = if (description.isNotBlank()) description else "Freshly harvested ${name}.",
                                 category = selectedCategory,
                                 imageRes = when(selectedCategory) {
                                     ProductCategory.ROOTS -> R.drawable.roots
@@ -511,9 +642,9 @@ fun ConfirmListingScreen(drafts: List<Product>, address: String, onAddressChange
                     items(drafts) { product ->
                         ListingSummaryItem(
                             name = product.name,
-                            date = "29 Nov, 15:20 pm",
+                            date = "Ready to list",
                             price = "P${product.price}",
-                            quantity = "1 kg",
+                            quantity = "${product.kilos} kg",
                             imageRes = product.imageRes
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -539,7 +670,6 @@ fun ConfirmListingScreen(drafts: List<Product>, address: String, onAddressChange
 
 @Composable
 fun ListingSummaryItem(name: String, date: String, price: String, quantity: String, imageRes: Int, onCancel: () -> Unit = {}) {
-    var count by remember { mutableIntStateOf(1) }
     var currentName by remember { mutableStateOf(name) }
     var currentPrice by remember { mutableStateOf(price) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -620,15 +750,6 @@ fun ListingSummaryItem(name: String, date: String, price: String, quantity: Stri
                     Icons.Default.Edit, 
                     contentDescription = "Edit", 
                     modifier = Modifier.size(16.dp).clickable { showEditDialog = true }, 
-                    tint = colorResource(id = R.color.green1)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = count.toString(), fontSize = 14.sp)
-                Spacer(modifier = Modifier.width(4.dp))
-                Icon(
-                    Icons.Default.AddCircle, 
-                    contentDescription = "Add", 
-                    modifier = Modifier.size(16.dp).clickable { count++ }, 
                     tint = colorResource(id = R.color.green1)
                 )
             }

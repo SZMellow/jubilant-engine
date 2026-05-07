@@ -4,17 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import com.example.mapaani3.ui.theme.MapaAni3Theme
 
 class MainActivity : ComponentActivity() {
@@ -45,14 +42,20 @@ class MainActivity : ComponentActivity() {
                     "farmer_login" -> {
                         FarmerLoginScreen(
                             onBackClick = { currentScreen = "login_selection" },
-                            onLoginClick = { currentScreen = "farmer_main" },
+                            onLoginClick = { 
+                                UserSession.currentUserType = UserType.FARMER
+                                currentScreen = "farmer_main" 
+                            },
                             onSignUpClick = { /* Navigate to Farmer Sign Up */ }
                         )
                     }
                     "buyer_login" -> {
                         BuyerLoginScreen(
                             onBackClick = { currentScreen = "login_selection" },
-                            onLoginClick = { currentScreen = "main" },
+                            onLoginClick = { 
+                                UserSession.currentUserType = UserType.BUYER
+                                currentScreen = "main" 
+                            },
                             onSignUpClick = { /* Navigate to Buyer Sign Up */ }
                         )
                     }
@@ -60,7 +63,7 @@ class MainActivity : ComponentActivity() {
                         FarmerMain(onExit = { currentScreen = "login_selection" })
                     }
                     "main" -> {
-                        MainScreen()
+                        MainScreen(onExit = { currentScreen = "login_selection" })
                     }
                 }
             }

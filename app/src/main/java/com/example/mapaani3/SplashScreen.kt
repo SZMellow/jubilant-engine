@@ -22,10 +22,8 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(onNavigateToMain: () -> Unit) {
-    // Animation state for the logo scale
     val scale = remember { Animatable(0f) }
 
-    // Animation and Navigation logic
     LaunchedEffect(key1 = true) {
         scale.animateTo(
             targetValue = 1f,
@@ -33,11 +31,11 @@ fun SplashScreen(onNavigateToMain: () -> Unit) {
                 durationMillis = 800
             )
         )
-        delay(500L) // Reduced delay
+        delay(500L)
         onNavigateToMain()
     }
 
-    // Splash Screen UI
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
