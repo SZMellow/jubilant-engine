@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mapaani3.logic.PriceUtils
+import com.example.mapaani3.ui.components.ImperfectBadge
 import com.example.mapaani3.ui.theme.MapaAni3Theme
 
 @Composable
@@ -305,10 +307,7 @@ fun RecommendedGrid(items: List<Product>, onProductClick: (Product) -> Unit) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 rowItems.forEach { product ->
                     RecommendedItem(
-                        name = product.name,
-                        price = "P${product.price}",
-                        image = product.imageRes,
-                        rating = product.rating.toString(),
+                        product = product,
                         modifier = Modifier.weight(1f).clickable { onProductClick(product) }
                     )
                 }
@@ -321,7 +320,7 @@ fun RecommendedGrid(items: List<Product>, onProductClick: (Product) -> Unit) {
 }
 
 @Composable
-fun RecommendedItem(name: String, price: String, image: Int, rating: String, modifier: Modifier = Modifier) {
+fun RecommendedItem(product: Product, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -329,8 +328,8 @@ fun RecommendedItem(name: String, price: String, image: Int, rating: String, mod
     ) {
         Box {
             Image(
-                painter = painterResource(id = image),
-                contentDescription = name,
+                painter = painterResource(id = product.imageRes),
+                contentDescription = product.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -346,7 +345,7 @@ fun RecommendedItem(name: String, price: String, image: Int, rating: String, mod
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = rating, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(text = product.rating.toString(), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(2.dp))
                     Text(text = "★", color = colorResource(id = R.color.yellowrice), fontSize = 10.sp)
                 }
@@ -360,7 +359,24 @@ fun RecommendedItem(name: String, price: String, image: Int, rating: String, mod
                     .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                     .padding(horizontal = 4.dp, vertical = 2.dp)
             ) {
-                Text(text = price, color = Color.White, fontSize = 10.sp)
+                val displayPrice = if (product.isImperfectCrop) 
+                    PriceUtils.calculateDiscountedPrice(product.price) 
+                else 
+                    product.price
+                Text(text = "P$displayPrice", color = Color.White, fontSize = 10.sp)
+            }
+            
+            // Imperfect Badge Overlay
+            if (product.isImperfectCrop) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .background(colorResource(id = R.color.yellowrice), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                ) {
+                    Text(text = "30% OFF", color = Color.Black, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }

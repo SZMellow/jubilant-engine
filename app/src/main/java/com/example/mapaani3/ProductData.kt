@@ -20,7 +20,8 @@ data class Product(
     val description: String = "Freshly harvested locally grown vegetables. High quality and pesticide-free from our local farms to your table.",
     val rating: Double = 5.0,
     val isBestSeller: Boolean = false,
-    val isRecommended: Boolean = false
+    val isRecommended: Boolean = false,
+    val isImperfectCrop: Boolean = false
 )
 
 data class CartItem(
@@ -61,13 +62,13 @@ object FarmerManager {
 object SampleData {
     val products = listOf(
         Product("1", "Onions", 103.0, ProductCategory.ROOTS, R.drawable.onions, isBestSeller = true),
-        Product("2", "Ginger", 50.0, ProductCategory.ROOTS, R.drawable.ginger, isBestSeller = true),
+        Product("2", "Ginger", 50.0, ProductCategory.ROOTS, R.drawable.ginger, isBestSeller = true, isImperfectCrop = true),
         Product("3", "Potatoes", 12.99, ProductCategory.ROOTS, R.drawable.potatoes, isBestSeller = true),
         Product("4", "Cabbage", 8.20, ProductCategory.LEAFY, R.drawable.cabbage, isBestSeller = true),
-        Product("5", "Eggplant", 10.0, ProductCategory.GOURDS, R.drawable.eggplant, isRecommended = true),
+        Product("5", "Eggplant", 10.0, ProductCategory.GOURDS, R.drawable.eggplant, isRecommended = true, isImperfectCrop = true),
         Product("6", "Carrots", 25.0, ProductCategory.ROOTS, R.drawable.carrots, isRecommended = true),
         Product("7", "Lettuce", 35.0, ProductCategory.LEAFY, R.drawable.lettuce),
-        Product("8", "String Beans", 15.0, ProductCategory.BEANS, R.drawable.sitaw),
+        Product("8", "String Beans", 15.0, ProductCategory.BEANS, R.drawable.sitaw, isImperfectCrop = true),
         Product("9", "Bitter Gourd", 20.0, ProductCategory.GOURDS, R.drawable.bittergourd)
     )
 }

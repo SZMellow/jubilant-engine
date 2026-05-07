@@ -8,6 +8,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FavoriteBorder
+import com.example.mapaani3.ui.components.FavoriteStockButton
+import com.example.mapaani3.ui.components.ImperfectBadge
+import com.example.mapaani3.ui.components.PriceDisplay
+import com.example.mapaani3.ui.viewmodel.ProductDetailViewModel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,9 +23,18 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.mapaani3.ui.theme.MapaAni3Theme
 
 @Composable
-fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () -> Unit) {
+fun ProductDetailScreen(
+    product: Product,
+    onBack: () -> Unit,
+    onAddToCart: () -> Unit,
+    viewModel: ProductDetailViewModel = remember(product.id) { ProductDetailViewModel(product.id) }
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
     Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Image Header
@@ -38,7 +51,8 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 48.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
                         onClick = onBack,
@@ -46,12 +60,13 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
-                    IconButton(
-                        onClick = { },
-                        modifier = Modifier.background(Color.White.copy(alpha = 0.5f), CircleShape)
-                    ) {
-                        Icon(Icons.Default.FavoriteBorder, contentDescription = "Favorite")
-                    }
+                    
+                    // Live Stock & Favorite Button
+                    FavoriteStockButton(
+                        isFavorite = uiState.isFavorite,
+                        stockCount = uiState.stockCount,
+                        onToggle = { viewModel.toggleFavorite() }
+                    )
                 }
             }
 
@@ -61,6 +76,9 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
                     .fillMaxSize()
                     .padding(24.dp)
             ) {
+                // Badge for imperfect crops
+                ImperfectBadge(isImperfect = product.isImperfectCrop)
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -72,12 +90,9 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
                         fontWeight = FontWeight.Bold,
                         color = colorResource(id = R.color.green1)
                     )
-                    Text(
-                        text = "P${product.price}",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = colorResource(id = R.color.green2)
-                    )
+                    
+                    // Price display with discount logic
+                    PriceDisplay(price = product.price, isImperfect = product.isImperfectCrop)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -120,5 +135,17 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProductDetailScreenPreview() {
+    MapaAni3Theme {
+        ProductDetailScreen(
+            product = SampleData.products[1], // Ginger (Imperfect)
+            onBack = {},
+            onAddToCart = {}
+        )
     }
 }
