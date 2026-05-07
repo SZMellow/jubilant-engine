@@ -177,7 +177,7 @@ fun CategoryRow(selectedCategory: ProductCategory?, onCategorySelect: (ProductCa
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        ProductCategory.values().forEach { category ->
+        ProductCategory.entries.forEach { category ->
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.clickable { onCategorySelect(category) }

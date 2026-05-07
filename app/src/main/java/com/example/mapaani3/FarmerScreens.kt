@@ -1,0 +1,832 @@
+package com.example.mapaani3
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.ShoppingBasket
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.ShoppingBasket
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+import androidx.compose.ui.tooling.preview.Preview
+import com.example.mapaani3.ui.theme.MapaAni3Theme
+import java.util.UUID
+
+@Composable
+fun FarmerMain(onExit: () -> Unit) {
+    var selectedTab by remember { mutableStateOf("home") }
+    var currentFarmerScreen by remember { mutableStateOf("selling_list") }
+    val draftListing = remember { mutableStateListOf<Product>() }
+    var selectedProduct by remember { mutableStateOf<Product?>(null) }
+    var pickupAddress by remember { mutableStateOf("778 Locust View Drive Oakland, CA") }
+    
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.weight(1f)) {
+                when (selectedTab) {
+                    "home" -> HomeScreen(onProductClick = { selectedProduct = it })
+                    "selling_list" -> {
+                        when (currentFarmerScreen) {
+                            "selling_list" -> FarmerSellingListScreen(
+                                onAddClick = { currentFarmerScreen = "add_crop" }
+                            )
+                            "add_crop" -> AddCropScreen(
+                                onBack = { currentFarmerScreen = "selling_list" },
+                                onNext = { product ->
+                                    draftListing.clear()
+                                    draftListing.add(product)
+                                    currentFarmerScreen = "confirm_listing"
+                                }
+                            )
+                            "confirm_listing" -> ConfirmListingScreen(
+                                drafts = draftListing,
+                                address = pickupAddress,
+                                onAddressChange = { pickupAddress = it },
+                                onBack = { currentFarmerScreen = "add_crop" },
+                                onConfirm = { currentFarmerScreen = "take_photo" }
+                            )
+                            "take_photo" -> TakeProductPhotoScreen(
+                                onBack = { currentFarmerScreen = "confirm_listing" },
+                                onTakePhoto = { 
+                                    draftListing.forEach { FarmerManager.addListing(it) }
+                                    currentFarmerScreen = "success" 
+                                }
+                            )
+                            "success" -> ListingSuccessScreen(
+                                onFinished = { 
+                                    draftListing.clear()
+                                    currentFarmerScreen = "selling_list" 
+                                }
+                            )
+                        }
+                    }
+                    "favorites" -> BookmarksScreen()
+                    "orders" -> FarmerOrdersScreen()
+                    "settings" -> FarmerSettingsScreen(onExit = onExit)
+                }
+            }
+            
+            if (currentFarmerScreen != "success") {
+                FarmerBottomNavBar(
+                    selectedTab = selectedTab,
+                    onTabSelected = { 
+                        selectedTab = it
+                        currentFarmerScreen = "selling_list" // Reset flow if switching tabs
+                    }
+                )
+            }
+        }
+
+        // Overlay Detail Screen if a product is clicked in Home
+        selectedProduct?.let { product ->
+            ProductDetailScreen(
+                product = product,
+                onBack = { selectedProduct = null },
+                onAddToCart = {
+                    CartManager.addProduct(product)
+                    selectedProduct = null
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun FarmerOrdersScreen() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorResource(id = R.color.green2))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "My Listed Crops",
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+            color = Color.White
+        ) {
+            if (FarmerManager.myListings.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("You haven't listed any crops yet.", color = Color.Gray)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize().padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(FarmerManager.myListings) { product ->
+                        ListingSummaryItem(
+                            name = product.name,
+                            date = "Active Listing",
+                            price = "P${String.format("%.2f", product.price)}",
+                            quantity = "Available",
+                            imageRes = product.imageRes
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FarmerSettingsScreen(onExit: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorResource(id = R.color.green2))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "Settings",
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
+            color = Color.White
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Button(
+                    onClick = onExit,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)),
+                    shape = RoundedCornerShape(28.dp)
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null, tint = Color.White)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Exit / Log Out", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FarmerSellingListScreen(onAddClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize().background(colorResource(id = R.color.green2))) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 60.dp)
+        ) {
+            Text(
+                text = "Selling List",
+                color = Color.White,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(20.dp))
+            
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+                color = Color.White
+            ) {
+                if (FarmerManager.myListings.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize().background(colorResource(id = R.color.green2).copy(alpha = 0.8f)),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Your selling list is empty",
+                            color = Color.White,
+                            fontSize = 18.sp
+                        )
+                        
+                        Spacer(modifier = Modifier.height(40.dp))
+                        
+                        IconButton(
+                            onClick = onAddClick,
+                            modifier = Modifier
+                                .size(100.dp)
+                                .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                                .padding(8.dp)
+                                .background(Color.White.copy(alpha = 0.3f), CircleShape)
+                        ) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add",
+                                tint = Color.White,
+                                modifier = Modifier.size(48.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Text(
+                            text = "Want To Add\nSomething?",
+                            color = Color.White,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(24.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Current Listings",
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorResource(id = R.color.green1)
+                                )
+                                TextButton(onClick = onAddClick) {
+                                    Text("+ Add More", color = colorResource(id = R.color.green2))
+                                }
+                            }
+                        }
+                        items(FarmerManager.myListings) { product ->
+                            ListingSummaryItem(
+                                name = product.name,
+                                date = "Today",
+                                price = "P${String.format("%.2f", product.price)}",
+                                quantity = "Available",
+                                imageRes = product.imageRes,
+                                onCancel = { FarmerManager.removeListing(product.id) }
+                            )
+                        }
+                        item { Spacer(modifier = Modifier.height(80.dp)) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf(ProductCategory.ROOTS) }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorResource(id = R.color.green2))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 48.dp, start = 16.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            }
+            Text(
+                text = "Add New Crop",
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.size(48.dp))
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+            color = Color.White
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                TextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Crop Name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                TextField(
+                    value = price,
+                    onValueChange = { price = it },
+                    label = { Text("Price (P)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent
+                    )
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Text("Select Category", modifier = Modifier.align(Alignment.Start), fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    ProductCategory.entries.forEach { category ->
+                        FilterChip(
+                            selected = selectedCategory == category,
+                            onClick = { selectedCategory = category },
+                            label = { Text(category.displayName, fontSize = 10.sp) }
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                Button(
+                    onClick = {
+                        if (name.isNotEmpty() && price.isNotEmpty()) {
+                            val newProduct = Product(
+                                id = UUID.randomUUID().toString(),
+                                name = name,
+                                price = price.toDoubleOrNull() ?: 0.0,
+                                category = selectedCategory,
+                                imageRes = when(selectedCategory) {
+                                    ProductCategory.ROOTS -> R.drawable.roots
+                                    ProductCategory.LEAFY -> R.drawable.leafy
+                                    ProductCategory.BEANS -> R.drawable.beans
+                                    ProductCategory.GOURDS -> R.drawable.gourd
+                                }
+                            )
+                            onNext(newProduct)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.green2)),
+                    shape = RoundedCornerShape(28.dp)
+                ) {
+                    Text("Review Listing", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(60.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ConfirmListingScreen(drafts: List<Product>, address: String, onAddressChange: (String) -> Unit, onBack: () -> Unit, onConfirm: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorResource(id = R.color.green2))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 48.dp, start = 16.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            }
+            Text(
+                text = "Confirm Listing",
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.size(48.dp))
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+            color = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "Pickup Address",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorResource(id = R.color.green1)
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = colorResource(id = R.color.green2A).copy(alpha = 0.5f))
+                ) {
+                    TextField(
+                        value = address,
+                        onValueChange = onAddressChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = LocalTextStyle.current.copy(fontSize = 14.sp, color = colorResource(id = R.color.green1)),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = Color.Transparent,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        ),
+                        trailingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = colorResource(id = R.color.green1), modifier = Modifier.size(16.dp))
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Listing Summary",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorResource(id = R.color.green1)
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                LazyColumn(modifier = Modifier.weight(1f)) {
+                    items(drafts) { product ->
+                        ListingSummaryItem(
+                            name = product.name,
+                            date = "29 Nov, 15:20 pm",
+                            price = "P${product.price}",
+                            quantity = "1 kg",
+                            imageRes = product.imageRes
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                }
+
+                Button(
+                    onClick = onConfirm,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.green2)),
+                    shape = RoundedCornerShape(28.dp)
+                ) {
+                    Text(text = "Confirm Listing", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                
+                Spacer(modifier = Modifier.height(60.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ListingSummaryItem(name: String, date: String, price: String, quantity: String, imageRes: Int, onCancel: () -> Unit = {}) {
+    var count by remember { mutableIntStateOf(1) }
+    var currentName by remember { mutableStateOf(name) }
+    var currentPrice by remember { mutableStateOf(price) }
+    var showEditDialog by remember { mutableStateOf(false) }
+
+    if (showEditDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditDialog = false },
+            title = { Text("Edit Listing") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = currentName,
+                        onValueChange = { currentName = it },
+                        label = { Text("Product Name") }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = currentPrice,
+                        onValueChange = { currentPrice = it },
+                        label = { Text("Price") }
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = { 
+                    // currentName and currentPrice are already updated by states
+                    showEditDialog = false 
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = painterResource(id = imageRes),
+            contentDescription = currentName,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(70.dp)
+                .clip(RoundedCornerShape(12.dp))
+        )
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = currentName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(text = date, fontSize = 12.sp, color = Color.Gray)
+            Spacer(modifier = Modifier.height(4.dp))
+            Surface(
+                color = colorResource(id = R.color.green2).copy(alpha = 0.2f),
+                shape = RoundedCornerShape(4.dp),
+                modifier = Modifier.clickable { onCancel() }
+            ) {
+                Text(
+                    text = "Cancel Listing",
+                    fontSize = 10.sp,
+                    color = colorResource(id = R.color.green2),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
+        }
+        
+        Column(horizontalAlignment = Alignment.End) {
+            Text(text = currentPrice, fontWeight = FontWeight.Bold, color = colorResource(id = R.color.green1))
+            Text(text = quantity, fontSize = 12.sp, color = Color.Gray)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Edit, 
+                    contentDescription = "Edit", 
+                    modifier = Modifier.size(16.dp).clickable { showEditDialog = true }, 
+                    tint = colorResource(id = R.color.green1)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = count.toString(), fontSize = 14.sp)
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    Icons.Default.AddCircle, 
+                    contentDescription = "Add", 
+                    modifier = Modifier.size(16.dp).clickable { count++ }, 
+                    tint = colorResource(id = R.color.green1)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TakeProductPhotoScreen(onBack: () -> Unit, onTakePhoto: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colorResource(id = R.color.green2))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 48.dp, start = 16.dp, end = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+            }
+            Text(
+                text = "Listing Confirmation",
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.size(48.dp))
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+            color = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "To confirm your listings legitimacy, post a photo of the product.",
+                    textAlign = TextAlign.Center,
+                    fontSize = 14.sp,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(60.dp))
+                
+                Box(
+                    modifier = Modifier
+                        .size(200.dp)
+                        .border(1.dp, Color.LightGray.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.PhotoCamera,
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp),
+                        tint = Color.Gray.copy(alpha = 0.5f)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                Button(
+                    onClick = onTakePhoto,
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.green2)),
+                    shape = RoundedCornerShape(28.dp)
+                ) {
+                    Text(text = "Take photo", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                
+                Spacer(modifier = Modifier.height(60.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun ListingSuccessScreen(onFinished: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 48.dp, start = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onFinished) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colorResource(id = R.color.green1))
+            }
+        }
+        
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .border(2.dp, colorResource(id = R.color.green1), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .background(colorResource(id = R.color.green1), CircleShape)
+                        .align(Alignment.Center)
+                        .offset(x = (-5).dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Text(
+                text = "Listing Confirmed!",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorResource(id = R.color.green1)
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Text(
+                text = "Your listing has been successfully posted!",
+                textAlign = TextAlign.Center,
+                fontSize = 14.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(horizontal = 32.dp)
+            )
+            
+            Spacer(modifier = Modifier.height(100.dp))
+            
+            Text(
+                text = "If you have any questions, please reach out directly to our customer support",
+                textAlign = TextAlign.Center,
+                fontSize = 12.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(horizontal = 48.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun FarmerBottomNavBar(
+    selectedTab: String,
+    onTabSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(80.dp),
+        color = colorResource(id = R.color.green2),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val tabs = listOf(
+                Triple("home", Icons.Default.Home, Icons.Outlined.Home),
+                Triple("selling_list", Icons.Default.ShoppingBasket, Icons.Outlined.ShoppingBasket),
+                Triple("favorites", Icons.Default.Favorite, Icons.Default.FavoriteBorder),
+                Triple("orders", Icons.AutoMirrored.Filled.Assignment, Icons.AutoMirrored.Filled.Assignment),
+                Triple("settings", Icons.Default.Settings, Icons.Outlined.Settings)
+            )
+            
+            tabs.forEach { (tag, filledIcon, outlinedIcon) ->
+                IconButton(onClick = { onTabSelected(tag) }) {
+                    Icon(
+                        imageVector = if (selectedTab == tag) filledIcon else outlinedIcon,
+                        contentDescription = tag,
+                        tint = if (selectedTab == tag) Color.White else Color.White.copy(alpha = 0.6f),
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+        }
+    }
+}

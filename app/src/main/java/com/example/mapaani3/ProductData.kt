@@ -46,6 +46,18 @@ object CartManager {
     }
 }
 
+object FarmerManager {
+    val myListings = mutableStateListOf<Product>()
+
+    fun addListing(product: Product) {
+        myListings.add(product)
+    }
+    
+    fun removeListing(productId: String) {
+        myListings.removeAll { it.id == productId }
+    }
+}
+
 object SampleData {
     val products = listOf(
         Product("1", "Onions", 103.0, ProductCategory.ROOTS, R.drawable.onions, isBestSeller = true),

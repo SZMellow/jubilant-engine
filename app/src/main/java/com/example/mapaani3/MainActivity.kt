@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
                     "farmer_login" -> {
                         FarmerLoginScreen(
                             onBackClick = { currentScreen = "login_selection" },
-                            onLoginClick = { currentScreen = "main" },
+                            onLoginClick = { currentScreen = "farmer_main" },
                             onSignUpClick = { /* Navigate to Farmer Sign Up */ }
                         )
                     }
@@ -55,6 +55,9 @@ class MainActivity : ComponentActivity() {
                             onLoginClick = { currentScreen = "main" },
                             onSignUpClick = { /* Navigate to Buyer Sign Up */ }
                         )
+                    }
+                    "farmer_main" -> {
+                        FarmerMain(onExit = { currentScreen = "login_selection" })
                     }
                     "main" -> {
                         MainScreen()
