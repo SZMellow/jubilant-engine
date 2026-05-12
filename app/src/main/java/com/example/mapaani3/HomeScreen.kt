@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
@@ -20,80 +19,43 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mapaani3.ui.theme.MapaAni3Theme
 
-import androidx.compose.material.icons.filled.Add
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.first
-
 @Composable
 fun HomeScreen(onProductClick: (Product) -> Unit) {
-    val context = LocalContext.current
-    val db = remember { AppDatabase.getDatabase(context) }
-    val scope = rememberCoroutineScope()
+    val repository = remember { AppRepository() }
     
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<ProductCategory?>(null) }
-    var showAddProductDialog by remember { mutableStateOf(false) }
 
     // Sync from DB
     LaunchedEffect(Unit) {
-        db.productDao().getAllProducts().collect { entities ->
-            if (entities.isEmpty()) {
-                // Seed database if empty
-                val initialProducts = SampleData.products.map { p ->
-                    ProductEntity(
-                        name = p.name,
-                        price = p.price,
-                        kilos = p.kilos,
-                        category = p.category.name,
-                        description = p.description,
-                        rating = p.rating,
-                        imageRes = p.imageRes,
-                        farmerName = "Sample Farmer",
-                        isBestSeller = p.isBestSeller,
-                        isRecommended = p.isRecommended
-                    )
-                }
-                db.productDao().insertProducts(initialProducts)
-            } else {
-                ProductRepository.loadProducts(entities.map { e ->
-                    Product(
-                        id = e.id.toString(),
-                        name = e.name,
-                        price = e.price,
-                        category = ProductCategory.valueOf(e.category),
-                        imageRes = e.imageRes,
-                        kilos = e.kilos,
-                        description = e.description,
-                        rating = e.rating,
-                        isBestSeller = e.isBestSeller,
-                        isRecommended = e.isRecommended
-                    )
-                })
+        repository.getAllProducts().collect { products ->
+            ProductRepository.loadProducts(products)
+        }
+    }
+
+    val filteredProducts by remember {
+        derivedStateOf {
+            ProductRepository.allProducts.filter { product ->
+                val matchesSearch = product.name.contains(searchQuery, ignoreCase = true)
+                val matchesCategory = selectedCategory == null || product.category == selectedCategory
+                val hasStock = product.kilos > 0
+                matchesSearch && matchesCategory && hasStock
             }
         }
     }
 
-    val filteredProducts = remember(searchQuery, selectedCategory, ProductRepository.allProducts.size) {
-        ProductRepository.allProducts.filter { product ->
-            val matchesSearch = product.name.contains(searchQuery, ignoreCase = true)
-            val matchesCategory = selectedCategory == null || product.category == selectedCategory
-            matchesSearch && matchesCategory
-        }
+    val productsToShow by remember {
+        derivedStateOf { filteredProducts }
     }
-
-    val bestSellers = remember(filteredProducts) { filteredProducts.filter { it.isBestSeller } }
-    val recommended = remember(filteredProducts) { filteredProducts.filter { it.isRecommended } }
-    val others = remember(filteredProducts) { filteredProducts.filter { !it.isBestSeller && !it.isRecommended } }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -128,28 +90,9 @@ fun HomeScreen(onProductClick: (Product) -> Unit) {
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    if (bestSellers.isNotEmpty()) {
-                        // Best Sellers
-                        SectionHeader(title = "Best Sellers", onViewAll = {})
-                        BestSellersRow(items = bestSellers, onProductClick = onProductClick)
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-
-                    // Promo Banner
-                    PromoBanner()
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    if (recommended.isNotEmpty()) {
-                        // Recommended
-                        SectionHeader(title = "Recommended", onViewAll = {})
-                        RecommendedGrid(items = recommended, onProductClick = onProductClick)
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-
-                    if (others.isNotEmpty()) {
-                        SectionHeader(title = "More Products", onViewAll = {})
-                        RecommendedGrid(items = others, onProductClick = onProductClick)
+                    if (productsToShow.isNotEmpty()) {
+                        SectionHeader(title = "Available Crops")
+                        RecommendedGrid(items = productsToShow, onProductClick = onProductClick)
                     }
                     
                     if (filteredProducts.isEmpty()) {
@@ -157,129 +100,13 @@ fun HomeScreen(onProductClick: (Product) -> Unit) {
                             Text("No products found", color = Color.Gray)
                         }
                     }
+                    
+                    // Extra spacer to ensure we can scroll past bottom elements if needed
+                    Spacer(modifier = Modifier.height(80.dp))
                 }
             }
         }
-
-        // Add Product FAB for Farmers
-        if (UserSession.currentUserType == UserType.FARMER) {
-            FloatingActionButton(
-                onClick = { showAddProductDialog = true },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(24.dp),
-                containerColor = colorResource(id = R.color.green2),
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Product")
-            }
-        }
     }
-
-    if (showAddProductDialog) {
-        AddProductDialog(onDismiss = { showAddProductDialog = false })
-    }
-}
-
-@Composable
-fun AddProductDialog(onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var price by remember { mutableStateOf("") }
-    var kilos by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(ProductCategory.ROOTS) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add New Product") },
-        text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Product Name") },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black
-            )
-        )
-        OutlinedTextField(
-            value = price,
-            onValueChange = { price = it },
-            label = { Text("Price per Kilo") },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black
-            )
-        )
-        OutlinedTextField(
-            value = kilos,
-            onValueChange = { kilos = it },
-            label = { Text("Available Kilos") },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black
-            )
-        )
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = { Text("Description") },
-            modifier = Modifier.height(100.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black
-            )
-        )
-                
-                Text("Category:", fontWeight = FontWeight.Bold)
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    ProductCategory.entries.forEach { category ->
-                        FilterChip(
-                            selected = selectedCategory == category,
-                            onClick = { selectedCategory = category },
-                            label = { Text(category.displayName, fontSize = 10.sp) }
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            val context = LocalContext.current
-            val db = remember { AppDatabase.getDatabase(context) }
-            val scope = rememberCoroutineScope()
-            
-            Button(
-                onClick = {
-                    scope.launch {
-                        val productEntity = ProductEntity(
-                            name = name,
-                            price = price.toDoubleOrNull() ?: 0.0,
-                            kilos = kilos.toDoubleOrNull() ?: 1.0,
-                            category = selectedCategory.name,
-                            description = if (description.isNotBlank()) description else "Freshly harvested ${name}.",
-                            imageRes = R.drawable.vegertable,
-                            rating = 5.0,
-                            farmerName = "My Farm",
-                            isBestSeller = false,
-                            isRecommended = false
-                        )
-                        db.productDao().insertProduct(productEntity)
-                        onDismiss()
-                    }
-                },
-                enabled = name.isNotBlank() && price.isNotBlank()
-            ) {
-                Text("Add")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
-    )
 }
 
 @Composable
@@ -308,20 +135,8 @@ fun HomeHeader(searchQuery: String, onSearchChange: (String) -> Unit) {
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent
                 ),
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
-                trailingIcon = { Icon(Icons.Outlined.Tune, contentDescription = null, tint = Color.Gray) }
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) }
             )
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Icons
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.ShoppingCart, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(Icons.Outlined.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
-            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -385,93 +200,28 @@ fun CategoryRow(selectedCategory: ProductCategory?, onCategorySelect: (ProductCa
 }
 
 @Composable
-fun SectionHeader(title: String, onViewAll: () -> Unit) {
+fun SectionHeader(title: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text = title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = colorResource(id = R.color.green1))
-        Row(
-            modifier = Modifier.clickable { onViewAll() },
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "View All", fontSize = 14.sp, color = Color.Gray)
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-        }
     }
     Spacer(modifier = Modifier.height(16.dp))
 }
 
-@Composable
-fun BestSellersRow(items: List<Product>, onProductClick: (Product) -> Unit) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(items) { product ->
-            Card(
-                modifier = Modifier.width(100.dp).clickable { onProductClick(product) },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Box {
-                    Image(
-                        painter = painterResource(id = product.imageRes),
-                        contentDescription = product.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(100.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                    )
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(4.dp)
-                            .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                    ) {
-                        Text(text = "P${String.format("%.2f", product.price * product.kilos)}", color = Color.White, fontSize = 10.sp)
-                    }
-                }
-            }
-        }
-    }
-}
 
-@Composable
-fun PromoBanner() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(140.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = colorResource(id = R.color.green1))
-    ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(text = "LOWER PRICES", color = Color.White, fontSize = 12.sp)
-                Text(text = "30% OFF", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            }
-            Image(
-                painter = painterResource(id = R.drawable.vegertable),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-            )
-        }
-    }
-}
+
+
 
 @Composable
 fun RecommendedGrid(items: List<Product>, onProductClick: (Product) -> Unit) {
     val chunks = items.chunked(2)
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
         chunks.forEach { rowItems ->
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 rowItems.forEach { product ->
@@ -493,9 +243,10 @@ fun RecommendedItem(product: Product, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Box {
+        Column {
             Image(
                 painter = painterResource(id = product.imageRes),
                 contentDescription = product.name,
@@ -503,32 +254,41 @@ fun RecommendedItem(product: Product, modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
             )
             
-            // Rating Tag
-            Box(
-                modifier = Modifier
-                    .padding(8.dp)
-                    .background(Color.White.copy(alpha = 0.8f), CircleShape)
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = product.rating.toString(), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Spacer(modifier = Modifier.width(2.dp))
-                    Text(text = "★", color = colorResource(id = R.color.yellowrice), fontSize = 10.sp)
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = product.name,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "by ${product.farmerName ?: "Local Farmer"}",
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "P${String.format("%.2f", product.price)}",
+                        color = colorResource(id = R.color.green2),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${product.kilos}kg left",
+                        color = Color.Gray,
+                        fontSize = 11.sp
+                    )
                 }
-            }
-
-            // Price Tag
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-            ) {
-                Text(text = "P${String.format("%.2f", product.price * product.kilos)}", color = Color.White, fontSize = 10.sp)
             }
         }
     }

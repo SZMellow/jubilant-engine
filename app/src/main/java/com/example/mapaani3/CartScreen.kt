@@ -78,7 +78,7 @@ fun CartScreen(onProductClick: (Product) -> Unit, onCheckout: () -> Unit) {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    val total = CartManager.items.sumOf { it.product.price * it.product.kilos }
+                    val total = CartManager.items.sumOf { it.product.price * it.quantityKilos }
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -147,13 +147,13 @@ fun CartItemRow(item: CartItem, onProductClick: (Product) -> Unit) {
                     color = colorResource(id = R.color.green1)
                 )
                 Text(
-                    text = "${item.product.kilos} kg",
+                    text = "${item.quantityKilos} kg",
                     fontSize = 14.sp,
                     color = colorResource(id = R.color.green2),
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "P${String.format("%.2f", item.product.price * item.product.kilos)}",
+                    text = "P${String.format("%.2f", item.product.price * item.quantityKilos)}",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )

@@ -96,11 +96,11 @@ fun MainScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                 }
             ) { innerPadding ->
                 ContentScreen(
-                    modifier = Modifier.padding(innerPadding),
+                    modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
                     selectedIndex = selectedItem,
                     onProductClick = { selectedProduct = it },
                     onCheckout = { currentScreen = "checkout" },
-                onExit = onExit
+                    onExit = onExit
                 )
             }
         }

@@ -17,15 +17,13 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.ShoppingBasket
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.ShoppingBasket
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -33,11 +31,11 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.mapaani3.ui.theme.MapaAni3Theme
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 @Composable
@@ -73,16 +71,22 @@ fun FarmerMain(onExit: () -> Unit) {
                                 onBack = { currentFarmerScreen = "add_crop" },
                                 onConfirm = { currentFarmerScreen = "take_photo" }
                             )
-                            "take_photo" -> TakeProductPhotoScreen(
-                                onBack = { currentFarmerScreen = "confirm_listing" },
-                                onTakePhoto = { 
-                                    draftListing.forEach { product ->
-                                        ProductRepository.addProduct(product)
-                                        FarmerManager.addListing(product)
+                            "take_photo" -> {
+                                val repository = remember { AppRepository() }
+                                val scope = rememberCoroutineScope()
+                                
+                                TakeProductPhotoScreen(
+                                    onBack = { currentFarmerScreen = "confirm_listing" },
+                                    onTakePhoto = { 
+                                        scope.launch {
+                                            draftListing.forEach { product ->
+                                                repository.addProduct(product)
+                                            }
+                                            currentFarmerScreen = "success"
+                                        }
                                     }
-                                    currentFarmerScreen = "success" 
-                                }
-                            )
+                                )
+                            }
                             "success" -> ListingSuccessScreen(
                                 onFinished = { 
                                     draftListing.clear()
@@ -91,7 +95,6 @@ fun FarmerMain(onExit: () -> Unit) {
                             )
                         }
                     }
-                    "favorites" -> BookmarksScreen(onProductClick = { selectedProduct = it })
                     "orders" -> FarmerOrdersScreen()
                     "settings" -> FarmerSettingsScreen(onExit = onExit)
                 }
@@ -124,11 +127,23 @@ fun FarmerMain(onExit: () -> Unit) {
 
 @Composable
 fun FarmerOrdersScreen() {
+    val repository = remember { AppRepository() }
+    val scope = rememberCoroutineScope()
     var selectedTab by remember { mutableStateOf("Active") }
     val visibleTabs = listOf("Active", "Completed", "Cancelled")
     
-    val filteredOrders = OrderManager.farmerOrders.filter { 
-        it.status == selectedTab && it.farmerId == UserSession.currentUserId 
+    var orders by remember { mutableStateOf(emptyList<Order>()) }
+    
+    LaunchedEffect(UserSession.currentUserId) {
+        UserSession.currentUserId?.let { userId ->
+            repository.getFarmerOrders(userId).collect {
+                orders = it
+            }
+        }
+    }
+
+    val filteredOrders = orders.filter { 
+        it.status == selectedTab
     }
 
     Column(
@@ -198,7 +213,11 @@ fun FarmerOrdersScreen() {
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(filteredOrders) { order ->
-                            FarmerOrderItem(order)
+                            FarmerOrderItem(order, onStatusUpdate = { newStatus ->
+                                scope.launch {
+                                    repository.updateOrderStatus(order.id, newStatus)
+                                }
+                            })
                         }
                     }
                 }
@@ -208,7 +227,7 @@ fun FarmerOrdersScreen() {
 }
 
 @Composable
-fun FarmerOrderItem(order: Order) {
+fun FarmerOrderItem(order: Order, onStatusUpdate: (String) -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -219,16 +238,15 @@ fun FarmerOrderItem(order: Order) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = order.id, fontWeight = FontWeight.Bold, color = colorResource(id = R.color.green1))
-                Text(text = order.date, fontSize = 12.sp, color = Color.Gray)
+                Text(text = "Order #${order.id.takeLast(6)}", fontWeight = FontWeight.Bold, color = colorResource(id = R.color.green1))
             }
             
             Spacer(modifier = Modifier.height(8.dp))
             
             order.items.forEach { cartItem ->
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(text = "${cartItem.product.name} (${cartItem.product.kilos} kg)", fontSize = 14.sp)
-                    Text(text = "P${String.format("%.2f", cartItem.product.price * cartItem.product.kilos)}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(text = "${cartItem.product.name} (${cartItem.quantityKilos} kg)", fontSize = 14.sp)
+                    Text(text = "P${String.format("%.2f", cartItem.product.price * cartItem.quantityKilos)}", fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
             
@@ -241,17 +259,20 @@ fun FarmerOrderItem(order: Order) {
             ) {
                 Text(text = "Total Earned:", fontWeight = FontWeight.Bold)
                 Text(
-                    text = "P${String.format("%.2f", order.totalPrice)}",
+                    text = "P${String.format("%.2f", order.totalPrice - order.deliveryFee)}",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = colorResource(id = R.color.green1)
                 )
             }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(text = "Deliver at: ${order.deliveryTime}", fontSize = 12.sp, color = colorResource(id = R.color.green2), fontWeight = FontWeight.Bold)
             
             if (order.status == "Active") {
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
-                    onClick = { order.status = "Completed" },
+                    onClick = { onStatusUpdate("Completed") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.green2)),
                     shape = RoundedCornerShape(8.dp)
@@ -310,7 +331,56 @@ fun FarmerSettingsScreen(onExit: () -> Unit) {
 }
 
 @Composable
-fun FarmerSellingListScreen(onAddClick: () -> Unit) {
+fun FarmerSellingListScreen(
+    onAddClick: () -> Unit,
+    isVerified: Boolean = UserSession.isUserVerified,
+    repository: AppRepository = remember { AppRepository() }
+) {
+    var products by remember { mutableStateOf(emptyList<Product>()) }
+    var currentVerificationStatus by remember { mutableStateOf(isVerified) }
+    
+    LaunchedEffect(UserSession.currentUserId) {
+        UserSession.currentUserId?.let { userId ->
+            // Listen for product changes
+            repository.getFarmerProducts(userId).collect {
+                products = it
+            }
+        }
+    }
+
+    // New: Listen for verification status changes in real-time
+    LaunchedEffect(UserSession.currentUserId) {
+        UserSession.currentUserId?.let { userId ->
+            repository.getUserByIdStream(userId).collect { user ->
+                user?.let {
+                    UserSession.isUserVerified = it.isVerified
+                    currentVerificationStatus = it.isVerified
+                }
+            }
+        }
+    }
+
+    val scope = rememberCoroutineScope()
+    
+    FarmerSellingListContent(
+        products = products,
+        isVerified = currentVerificationStatus,
+        onAddClick = onAddClick,
+        onDeleteProduct = { productId ->
+            scope.launch {
+                repository.deleteProduct(productId)
+            }
+        }
+    )
+}
+
+@Composable
+fun FarmerSellingListContent(
+    products: List<Product>,
+    isVerified: Boolean,
+    onAddClick: () -> Unit,
+    onDeleteProduct: (String) -> Unit
+) {
     Box(modifier = Modifier.fillMaxSize().background(colorResource(id = R.color.green2))) {
         Column(
             modifier = Modifier
@@ -332,85 +402,130 @@ fun FarmerSellingListScreen(onAddClick: () -> Unit) {
                 shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
                 color = Color.White
             ) {
-                if (FarmerManager.myListings.filter { it.farmerId == UserSession.currentUserId }.isEmpty()) {
-                    Column(
-                        modifier = Modifier.fillMaxSize().background(colorResource(id = R.color.green2).copy(alpha = 0.8f)),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Your selling list is empty",
-                            color = Color.White,
-                            fontSize = 18.sp
-                        )
-                        
-                        Spacer(modifier = Modifier.height(40.dp))
-                        
-                        IconButton(
-                            onClick = onAddClick,
-                            modifier = Modifier
-                                .size(100.dp)
-                                .background(Color.White.copy(alpha = 0.2f), CircleShape)
-                                .padding(8.dp)
-                                .background(Color.White.copy(alpha = 0.3f), CircleShape)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (products.isEmpty()) {
+                        Column(
+                            modifier = Modifier.fillMaxSize().background(colorResource(id = R.color.green2).copy(alpha = 0.8f)),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Add",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp)
+                            Text(
+                                text = "Your selling list is empty",
+                                color = Color.White,
+                                fontSize = 18.sp
+                            )
+                            
+                            Spacer(modifier = Modifier.height(40.dp))
+                            
+                            IconButton(
+                                onClick = if (isVerified) onAddClick else ({}),
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                                    .padding(8.dp)
+                                    .background(Color.White.copy(alpha = 0.3f), CircleShape)
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = "Add",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Text(
+                                text = "Want To Add\nSomething?",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
                             )
                         }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "Want To Add\nSomething?",
-                            color = Color.White,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Current Listings",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colorResource(id = R.color.green1)
-                                )
-                                TextButton(onClick = onAddClick) {
-                                    Text("+ Add More", color = colorResource(id = R.color.green2))
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Current Listings",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colorResource(id = R.color.green1)
+                                    )
+                                    TextButton(onClick = if (isVerified) onAddClick else ({})) {
+                                        Text("+ Add More", color = if (isVerified) colorResource(id = R.color.green2) else Color.Gray)
+                                    }
                                 }
                             }
+                            items(products) { product ->
+                                ListingSummaryItem(
+                                    name = product.name,
+                                    date = "Today",
+                                    price = "P${String.format("%.2f", product.price)}",
+                                    quantity = "${product.kilos} kg",
+                                    imageRes = product.imageRes,
+                                    isDone = product.kilos <= 0,
+                                    onCancel = {
+                                        if (isVerified) {
+                                            onDeleteProduct(product.id)
+                                        }
+                                    }
+                                )
+                            }
+                            item { Spacer(modifier = Modifier.height(80.dp)) }
                         }
-                        items(FarmerManager.myListings.filter { it.farmerId == UserSession.currentUserId }) { product ->
-                            ListingSummaryItem(
-                                name = product.name,
-                                date = "Today",
-                                price = "P${String.format("%.2f", product.price)}",
-                                quantity = "${product.kilos} kg",
-                                imageRes = product.imageRes,
-                                onCancel = { FarmerManager.removeListing(product.id) }
-                            )
+                    }
+
+                    // Verification Overlay
+                    if (!isVerified) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color.Gray.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxSize().padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Lock,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = Color.White
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Account Verification Pending",
+                                    color = Color.White,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Your selling capabilities are disabled while we verify your identity. This usually takes 24-48 hours.",
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
-                        item { Spacer(modifier = Modifier.height(80.dp)) }
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
@@ -543,7 +658,8 @@ fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
                                     ProductCategory.BEANS -> R.drawable.beans
                                     ProductCategory.GOURDS -> R.drawable.gourd
                                 },
-                                farmerId = UserSession.currentUserId
+                                farmerId = UserSession.currentUserId,
+                                farmerName = null // Will be handled by repository if needed
                             )
                             onNext(newProduct)
                         }
@@ -672,7 +788,7 @@ fun ConfirmListingScreen(drafts: List<Product>, address: String, onAddressChange
 }
 
 @Composable
-fun ListingSummaryItem(name: String, date: String, price: String, quantity: String, imageRes: Int, onCancel: () -> Unit = {}) {
+fun ListingSummaryItem(name: String, date: String, price: String, quantity: String, imageRes: Int, isDone: Boolean = false, onCancel: () -> Unit = {}) {
     var currentName by remember { mutableStateOf(name) }
     var currentPrice by remember { mutableStateOf(price) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -713,7 +829,9 @@ fun ListingSummaryItem(name: String, date: String, price: String, quantity: Stri
     }
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (isDone) 0.5f else 1.0f),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
@@ -731,16 +849,25 @@ fun ListingSummaryItem(name: String, date: String, price: String, quantity: Stri
             Text(text = currentName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Text(text = date, fontSize = 12.sp, color = Color.Gray)
             Spacer(modifier = Modifier.height(4.dp))
-            Surface(
-                color = colorResource(id = R.color.green2).copy(alpha = 0.2f),
-                shape = RoundedCornerShape(4.dp),
-                modifier = Modifier.clickable { onCancel() }
-            ) {
+            if (!isDone) {
+                Surface(
+                    color = colorResource(id = R.color.green2).copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(4.dp),
+                    modifier = Modifier.clickable { onCancel() }
+                ) {
+                    Text(
+                        text = "Cancel Listing",
+                        fontSize = 10.sp,
+                        color = colorResource(id = R.color.green2),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    )
+                }
+            } else {
                 Text(
-                    text = "Cancel Listing",
+                    text = "Sold Out",
                     fontSize = 10.sp,
-                    color = colorResource(id = R.color.green2),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Gray
                 )
             }
         }
@@ -748,13 +875,15 @@ fun ListingSummaryItem(name: String, date: String, price: String, quantity: Stri
         Column(horizontalAlignment = Alignment.End) {
             Text(text = currentPrice, fontWeight = FontWeight.Bold, color = colorResource(id = R.color.green1))
             Text(text = quantity, fontSize = 12.sp, color = Color.Gray)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Edit, 
-                    contentDescription = "Edit", 
-                    modifier = Modifier.size(16.dp).clickable { showEditDialog = true }, 
-                    tint = colorResource(id = R.color.green1)
-                )
+            if (!isDone) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Edit, 
+                        contentDescription = "Edit", 
+                        modifier = Modifier.size(16.dp).clickable { showEditDialog = true }, 
+                        tint = colorResource(id = R.color.green1)
+                    )
+                }
             }
         }
     }
@@ -936,7 +1065,6 @@ fun FarmerBottomNavBar(
             val tabs = listOf(
                 Triple("home", Icons.Default.Home, Icons.Outlined.Home),
                 Triple("selling_list", Icons.Default.ShoppingBasket, Icons.Outlined.ShoppingBasket),
-                Triple("favorites", Icons.Default.Favorite, Icons.Default.FavoriteBorder),
                 Triple("orders", Icons.AutoMirrored.Filled.Assignment, Icons.AutoMirrored.Filled.Assignment),
                 Triple("settings", Icons.Default.Settings, Icons.Outlined.Settings)
             )
@@ -954,3 +1082,56 @@ fun FarmerBottomNavBar(
         }
     }
 }
+
+@Preview(showBackground = true)
+@Composable
+fun FarmerOrderItemPreview() {
+    MapaAni3Theme {
+        FarmerOrderItem(
+            order = Order(
+                id = "ORD-123456789",
+                items = listOf(
+                    CartItem(
+                        product = Product("1", "Carrots", 25.0, ProductCategory.ROOTS, R.drawable.carrots),
+                        quantityKilos = 5.0
+                    )
+                ),
+                totalPrice = 127.5, // 125 + 2.5 (2%)
+                deliveryFee = 2.5,
+                deliveryTime = "10:00 AM",
+                date = "May 07, 2026",
+                status = "Active"
+            ),
+            onStatusUpdate = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FarmerSellingListUnverifiedPreview() {
+    MapaAni3Theme {
+        FarmerSellingListContent(
+            products = emptyList(),
+            isVerified = false,
+            onAddClick = {},
+            onDeleteProduct = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FarmerSellingListVerifiedPreview() {
+    MapaAni3Theme {
+        FarmerSellingListContent(
+            products = listOf(
+                Product("1", "Carrots", 25.0, ProductCategory.ROOTS, R.drawable.carrots, kilos = 50.0)
+            ),
+            isVerified = true,
+            onAddClick = {},
+            onDeleteProduct = {}
+        )
+    }
+}
+

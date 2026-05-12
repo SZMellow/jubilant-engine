@@ -160,13 +160,6 @@ fun LoginScreen(
                     }
 
                     Spacer(modifier = Modifier.height(24.dp))
-                    Text(text = "or sign up with", fontSize = 12.sp, color = Color.Gray)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Image(painter = painterResource(id = R.drawable.google), contentDescription = "Google", modifier = Modifier.size(36.dp).clip(CircleShape).clickable { })
-                        Image(painter = painterResource(id = R.drawable.facebook), contentDescription = "Facebook", modifier = Modifier.size(36.dp).clip(CircleShape).clickable { })
-                    }
-                    Spacer(modifier = Modifier.height(24.dp))
                     Row {
                         Text(text = "Don't have an account? ", fontSize = 12.sp, color = Color.Gray)
                         Text(text = "Sign Up", fontSize = 12.sp, color = colorResource(id = R.color.green2), fontWeight = FontWeight.Bold, modifier = Modifier.clickable { onSignUpClick() })
