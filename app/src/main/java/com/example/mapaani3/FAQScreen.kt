@@ -29,7 +29,6 @@ import com.example.mapaani3.ui.theme.MapaAni3Theme
 
 @Composable
 fun FAQScreen(onExit: () -> Unit) {
-    var selectedMainTab by remember { mutableStateOf("FAQ") }
     var selectedCategory by remember { mutableStateOf("General") }
 
     Column(
@@ -77,27 +76,6 @@ fun FAQScreen(onExit: () -> Unit) {
                     .fillMaxSize()
                     .padding(24.dp)
             ) {
-                // Main Tabs (FAQ / Contact Us)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    TabButton(
-                        text = "FAQ",
-                        selected = selectedMainTab == "FAQ",
-                        onClick = { selectedMainTab = "FAQ" },
-                        modifier = Modifier.weight(1f)
-                    )
-                    TabButton(
-                        text = "Contact Us",
-                        selected = selectedMainTab == "Contact Us",
-                        onClick = { selectedMainTab = "Contact Us" },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
                 // Category Chips
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -146,13 +124,13 @@ fun FAQScreen(onExit: () -> Unit) {
                 // FAQ List
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     val faqs = listOf(
-                        FAQData("General", "How do i track my order status in real-time?", "In Order for you to track your order in real-time"),
-                        FAQData("General", "Are there any service fees?", "There is only a very small service fee."),
-                        FAQData("Account", "How do i report bad crops", "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
-                        FAQData("Account", "How do i reset my password?", "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
-                        FAQData("Services", "What payment methods do you accept?", "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
-                        FAQData("Services", "What is the policy for cancellation or refunds?", "Lorem ipsum dolor sit amet, consectetur adipiscing elit."),
-                        FAQData("Services", "How are delivery fees calculated?", "Lorem ipsum dolor sit amet, consectetur adipiscing elit.")
+                        FAQData("General", "How do i track my order status in real-time?", "You can track your order in real-time by going to the 'History' tab and clicking on an active order to see its current progress and delivery updates."),
+                        FAQData("General", "Are there any service fees?", "We charge a minimal service fee of 2% to help maintain the platform and ensure a smooth experience for both farmers and buyers."),
+                        FAQData("Account", "How do i report bad crops", "If you receive crops that do not meet quality standards, go to the order details in your History and click 'Report Issue'. Please include photos of the crops."),
+                        FAQData("Account", "How do i reset my password?", "Go to the Login screen and click on 'Forgot Password'. Follow the instructions sent to your registered email address to set a new password."),
+                        FAQData("Services", "What payment methods do you accept?", "We currently accept Cash on Delivery (COD), GCash, and Maya for all transactions."),
+                        FAQData("Services", "What is the policy for cancellation or refunds?", "Cancellations are allowed before the order is marked as 'Processing'. Refunds are processed within 3-5 business days for valid quality complaints."),
+                        FAQData("Services", "How are delivery fees calculated?", "Delivery fees are calculated based on the distance between the farmer's location and your delivery address, as well as the total weight of the order.")
                     )
 
                     faqs.filter { it.category == selectedCategory }.forEach { faq ->

@@ -58,7 +58,9 @@ fun BookmarksScreen(onProductClick: (Product) -> Unit) {
             shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
             color = Color.White
         ) {
-            if (RequirementManager.requirements.isEmpty()) {
+            val userRequirements = RequirementManager.requirements.filter { it.buyerId == UserSession.currentUserId }
+            
+            if (userRequirements.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
@@ -79,7 +81,7 @@ fun BookmarksScreen(onProductClick: (Product) -> Unit) {
                     modifier = Modifier.fillMaxSize().padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(RequirementManager.requirements) { requirement ->
+                    items(userRequirements) { requirement ->
                         RequirementItem(requirement, onProductClick)
                     }
                 }
@@ -91,7 +93,7 @@ fun BookmarksScreen(onProductClick: (Product) -> Unit) {
         AddRequirementDialog(
             onDismiss = { showAddDialog = false },
             onAdd = { name, kilos ->
-                RequirementManager.addRequirement(name, kilos)
+                RequirementManager.addRequirement(name, kilos, UserSession.currentUserId)
                 showAddDialog = false
             }
         )

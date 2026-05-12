@@ -5,8 +5,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -99,7 +101,11 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: (Doub
                 onClick = { /* Consumes click to prevent leakage to background */ }
             )
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
             // Image Header
             Box(modifier = Modifier.fillMaxWidth().height(350.dp)) {
                 Image(
@@ -137,10 +143,8 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: (Doub
                     .fillMaxSize()
                     .padding(24.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = product.name,
@@ -148,6 +152,13 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: (Doub
                         fontWeight = FontWeight.Bold,
                         color = colorResource(id = R.color.green1)
                     )
+                    Text(
+                        text = "Farmer: ${product.farmerName ?: "Local Farmer"}",
+                        fontSize = 18.sp,
+                        color = colorResource(id = R.color.green2),
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "P${String.format("%.2f", product.price * selectedKilos)}",
                         fontSize = 24.sp,
@@ -159,12 +170,6 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: (Doub
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "Rating: ${product.rating}", fontSize = 16.sp, color = Color.Gray)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "★", color = colorResource(id = R.color.yellowrice), fontSize = 16.sp)
-                    
-                    Spacer(modifier = Modifier.weight(1f))
-                    
                     Text(
                         text = "Available: ${product.kilos} kg",
                         fontSize = 16.sp,

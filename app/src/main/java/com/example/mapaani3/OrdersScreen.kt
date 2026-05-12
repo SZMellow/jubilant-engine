@@ -1,5 +1,6 @@
 package com.example.mapaani3
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -22,15 +23,28 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mapaani3.ui.theme.MapaAni3Theme
+import kotlinx.coroutines.launch
 
 @Composable
 fun OrdersScreen() {
+    val repository = remember { AppRepository() }
+    val scope = rememberCoroutineScope()
     var selectedTab by remember { mutableStateOf("Active") }
     
     val visibleTabs = listOf("Active", "Completed", "Cancelled")
 
-    val filteredOrders = OrderManager.orders.filter { 
-        it.status == selectedTab && it.buyerId == UserSession.currentUserId 
+    var orders by remember { mutableStateOf(emptyList<Order>()) }
+    
+    LaunchedEffect(UserSession.currentUserId) {
+        UserSession.currentUserId?.let { userId ->
+            repository.getBuyerOrders(userId).collect {
+                orders = it
+            }
+        }
+    }
+
+    val filteredOrders = orders.filter { 
+        it.status == selectedTab
     }
 
     Column(
@@ -117,7 +131,11 @@ fun OrdersScreen() {
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         items(filteredOrders) { order ->
-                            OrderItemCard(order)
+                            OrderItemCard(order, onCancel = {
+                                scope.launch {
+                                    repository.updateOrderStatus(order.id, "Cancelled")
+                                }
+                            })
                         }
                     }
                 }
@@ -127,7 +145,7 @@ fun OrdersScreen() {
 }
 
 @Composable
-fun OrderItemCard(order: Order) {
+fun OrderItemCard(order: Order, onCancel: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -140,12 +158,20 @@ fun OrderItemCard(order: Order) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Order ID: ${order.id}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    color = colorResource(id = R.color.green1)
-                )
+                Column {
+                    Text(
+                        text = "Order ID: #${order.id.takeLast(6)}",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        color = colorResource(id = R.color.green1)
+                    )
+                    Text(
+                        text = "Farmer: ${order.farmerName ?: "Local Farmer"}",
+                        fontSize = 14.sp,
+                        color = colorResource(id = R.color.green2),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
                 Surface(
                     color = when(order.status) {
                         "Active" -> Color(0xFFFFF3E0)
@@ -179,7 +205,7 @@ fun OrderItemCard(order: Order) {
                         tint = Color.Unspecified
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "${item.product.name} (${item.product.kilos} kg)", fontSize = 14.sp)
+                    Text(text = "${item.product.name} (${item.quantityKilos} kg)", fontSize = 14.sp)
                 }
                 Spacer(modifier = Modifier.height(4.dp))
             }
@@ -188,11 +214,6 @@ fun OrderItemCard(order: Order) {
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = order.date, fontSize = 12.sp, color = Color.Gray)
-                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.Gray)
                         Spacer(modifier = Modifier.width(4.dp))
@@ -205,6 +226,19 @@ fun OrderItemCard(order: Order) {
                     fontSize = 16.sp,
                     color = colorResource(id = R.color.green2)
                 )
+            }
+
+            if (order.status == "Active") {
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                    border = BorderStroke(1.dp, Color.Red),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Cancel Order")
+                }
             }
         }
     }

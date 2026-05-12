@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.mapaani3.ui.theme.MapaAni3Theme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -23,11 +25,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MapaAni3Theme {
-                val context = LocalContext.current
-                val db = remember { AppDatabase.getDatabase(context) }
+                val repository = remember { AppRepository() }
                 val scope = rememberCoroutineScope()
                 var currentScreen by remember { mutableStateOf("splash") }
 
+                // Authentication and Navigation Logic
                 when (currentScreen) {
                     "splash" -> {
                         SplashScreen(onNavigateToMain = {
@@ -44,8 +46,9 @@ class MainActivity : ComponentActivity() {
                         LoginScreen(
                             onLoginClick = { email, password ->
                                 scope.launch {
-                                    val user = db.userDao().getUserByEmail(email)
-                                    if (user != null && user.password == password) {
+                                    val user = repository.getUserByEmail(email)
+                                    val hashedInput = PasswordHasher.hash(password)
+                                    if (user != null && user.passwordHash == hashedInput) {
                                         UserSession.currentUserId = user.id
                                         UserSession.currentUserType = if (user.userType == "FARMER") UserType.FARMER else UserType.BUYER
                                         currentScreen = if (user.userType == "FARMER") "farmer_main" else "main"
@@ -61,12 +64,21 @@ class MainActivity : ComponentActivity() {
                         SignUpScreen(
                             onSignUpClick = { name, email, password, type, proof ->
                                 scope.launch {
-                                    val newUser = UserEntity(name = name, email = email, password = password, userType = type, identificationProof = proof)
-                                    db.userDao().insertUser(newUser)
-                                    val userFromDb = db.userDao().getUserByEmail(email)
-                                    UserSession.currentUserId = userFromDb?.id
-                                    UserSession.currentUserType = if (type == "FARMER") UserType.FARMER else UserType.BUYER
-                                    currentScreen = if (type == "FARMER") "farmer_main" else "main"
+                                    val hashedPassword = PasswordHasher.hash(password)
+                                    val newUser = UserEntity(
+                                        name = name, 
+                                        email = email, 
+                                        passwordHash = hashedPassword, 
+                                        userType = type, 
+                                        identificationProof = proof
+                                    )
+                                    repository.registerUser(newUser)
+                                    val user = repository.getUserByEmail(email)
+                                    user?.let {
+                                        UserSession.currentUserId = it.id
+                                        UserSession.currentUserType = if (type == "FARMER") UserType.FARMER else UserType.BUYER
+                                        currentScreen = if (type == "FARMER") "farmer_main" else "main"
+                                    }
                                 }
                             },
                             onLoginClick = { currentScreen = "login" }
