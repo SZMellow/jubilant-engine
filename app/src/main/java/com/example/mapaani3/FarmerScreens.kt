@@ -113,8 +113,8 @@ fun FarmerMain(onExit: () -> Unit) {
             ProductDetailScreen(
                 product = product,
                 onBack = { selectedProduct = null },
-                onAddToCart = {
-                    CartManager.addProduct(product)
+                onAddToCart = { kilos ->
+                    CartManager.addProduct(product, kilos)
                     selectedProduct = null
                 }
             )
@@ -127,7 +127,9 @@ fun FarmerOrdersScreen() {
     var selectedTab by remember { mutableStateOf("Active") }
     val visibleTabs = listOf("Active", "Completed", "Cancelled")
     
-    val filteredOrders = OrderManager.farmerOrders.filter { it.status == selectedTab }
+    val filteredOrders = OrderManager.farmerOrders.filter { 
+        it.status == selectedTab && it.farmerId == UserSession.currentUserId 
+    }
 
     Column(
         modifier = Modifier
@@ -330,7 +332,7 @@ fun FarmerSellingListScreen(onAddClick: () -> Unit) {
                 shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
                 color = Color.White
             ) {
-                if (FarmerManager.myListings.isEmpty()) {
+                if (FarmerManager.myListings.filter { it.farmerId == UserSession.currentUserId }.isEmpty()) {
                     Column(
                         modifier = Modifier.fillMaxSize().background(colorResource(id = R.color.green2).copy(alpha = 0.8f)),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -392,7 +394,7 @@ fun FarmerSellingListScreen(onAddClick: () -> Unit) {
                                 }
                             }
                         }
-                        items(FarmerManager.myListings) { product ->
+                        items(FarmerManager.myListings.filter { it.farmerId == UserSession.currentUserId }) { product ->
                             ListingSummaryItem(
                                 name = product.name,
                                 date = "Today",
@@ -540,7 +542,8 @@ fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
                                     ProductCategory.LEAFY -> R.drawable.leafy
                                     ProductCategory.BEANS -> R.drawable.beans
                                     ProductCategory.GOURDS -> R.drawable.gourd
-                                }
+                                },
+                                farmerId = UserSession.currentUserId
                             )
                             onNext(newProduct)
                         }

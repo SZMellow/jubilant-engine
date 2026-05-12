@@ -110,8 +110,8 @@ fun MainScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
             ProductDetailScreen(
                 product = product,
                 onBack = { selectedProduct = null },
-                onAddToCart = {
-                    CartManager.addProduct(product)
+                onAddToCart = { kilos ->
+                    CartManager.addProduct(product, kilos)
                     selectedProduct = null
                     selectedItem = 1 // Switch to Cart tab
                 }

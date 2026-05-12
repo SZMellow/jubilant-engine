@@ -153,7 +153,7 @@ fun CheckoutScreen(onBack: () -> Unit, onOrderPlaced: () -> Unit) {
 
                 Button(
                     onClick = {
-                        OrderManager.placeOrder(CartManager.items, selectedTime)
+                        OrderManager.placeOrder(CartManager.items, selectedTime, UserSession.currentUserId)
                         CartManager.clear()
                         onOrderPlaced()
                     },

@@ -27,9 +27,8 @@ import com.example.mapaani3.ui.theme.MapaAni3Theme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BuyerLoginScreen(
-    onBackClick: () -> Unit,
-    onLoginClick: () -> Unit,
+fun LoginScreen(
+    onLoginClick: (String, String) -> Unit,
     onSignUpClick: () -> Unit
 ) {
     var emailOrMobile by remember { mutableStateOf("") }
@@ -45,29 +44,18 @@ fun BuyerLoginScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             // Header
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 48.dp, start = 24.dp, end = 24.dp),
-                verticalAlignment = Alignment.CenterVertically
+                contentAlignment = Alignment.Center
             ) {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        painter = painterResource(id = android.R.drawable.ic_media_play), // rotate it
-                        contentDescription = "Back",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp).aspectRatio(1f) // need to rotate for real use
-                    )
-                }
                 Text(
-                    text = "Buyer Log In",
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
+                    text = "Log In",
                     color = Color.White,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.size(48.dp)) 
             }
 
             Spacer(modifier = Modifier.height(30.dp))
@@ -82,7 +70,7 @@ fun BuyerLoginScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Kumusta Buyer!",
+                        text = "Kumusta!",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF3E2723),
@@ -90,7 +78,7 @@ fun BuyerLoginScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Ready for more vegetables? Log in to see what's fresh today.",
+                        text = "Log in to see what's fresh today or manage your harvest.",
                         fontSize = 14.sp,
                         color = Color.Gray,
                         modifier = Modifier.align(Alignment.Start)
@@ -112,6 +100,8 @@ fun BuyerLoginScreen(
                         placeholder = { Text("example@example.com", color = Color(0xFF3E2723).copy(alpha = 0.5f)) },
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
                         colors = TextFieldDefaults.colors(
+                            focusedTextColor = colorResource(id = R.color.yellowrice),
+                            unfocusedTextColor = colorResource(id = R.color.yellowrice),
                             focusedContainerColor = colorResource(id = R.color.green2A).copy(alpha = 0.5f),
                             unfocusedContainerColor = colorResource(id = R.color.green2A).copy(alpha = 0.5f),
                             focusedIndicatorColor = Color.Transparent,
@@ -142,6 +132,8 @@ fun BuyerLoginScreen(
                         },
                         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
                         colors = TextFieldDefaults.colors(
+                            focusedTextColor = colorResource(id = R.color.yellowrice),
+                            unfocusedTextColor = colorResource(id = R.color.yellowrice),
                             focusedContainerColor = colorResource(id = R.color.green2A).copy(alpha = 0.5f),
                             unfocusedContainerColor = colorResource(id = R.color.green2A).copy(alpha = 0.5f),
                             focusedIndicatorColor = Color.Transparent,
@@ -159,7 +151,7 @@ fun BuyerLoginScreen(
                     Spacer(modifier = Modifier.weight(1f))
 
                     Button(
-                        onClick = onLoginClick,
+                        onClick = { onLoginClick(emailOrMobile, password) },
                         modifier = Modifier.fillMaxWidth(0.7f).height(56.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.green2)),
                         shape = RoundedCornerShape(28.dp)
@@ -187,8 +179,8 @@ fun BuyerLoginScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun BuyerLoginScreenPreview() {
+fun LoginScreenPreview() {
     MapaAni3Theme {
-        BuyerLoginScreen(onBackClick = {}, onLoginClick = {}, onSignUpClick = {})
+        LoginScreen(onLoginClick = { _, _ -> }, onSignUpClick = {})
     }
 }

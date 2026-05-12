@@ -19,6 +19,7 @@ enum class UserType {
 
 object UserSession {
     var currentUserType by mutableStateOf(UserType.BUYER)
+    var currentUserId by mutableStateOf<Int?>(null)
 }
 
 data class Product(
@@ -31,21 +32,26 @@ data class Product(
     val description: String = "Freshly harvested locally grown vegetables. High quality and pesticide-free from our local farms to your table.",
     val rating: Double = 5.0,
     val isBestSeller: Boolean = false,
-    val isRecommended: Boolean = false
+    val isRecommended: Boolean = false,
+    val farmerId: Int? = null
 )
 
 data class CartItem(
     val product: Product,
-    val quantity: Int = 1
+    val quantityKilos: Double = 1.0
 )
 
 object CartManager {
     val items = mutableStateListOf<CartItem>()
 
-    fun addProduct(product: Product) {
+    fun addProduct(product: Product, kilos: Double) {
         val index = items.indexOfFirst { it.product.id == product.id }
         if (index == -1) {
-            items.add(CartItem(product))
+            items.add(CartItem(product, kilos))
+        } else {
+            // Update quantity if already in cart
+            val currentItem = items[index]
+            items[index] = currentItem.copy(quantityKilos = currentItem.quantityKilos + kilos)
         }
     }
 
@@ -64,22 +70,29 @@ data class Order(
     val totalPrice: Double,
     val deliveryTime: String,
     val date: String,
-    var status: String = "Active"
+    var status: String = "Active",
+    val buyerId: Int? = null,
+    val farmerId: Int? = null
 )
 
 object OrderManager {
     val orders = mutableStateListOf<Order>()
     val farmerOrders = mutableStateListOf<Order>()
 
-    fun placeOrder(items: List<CartItem>, deliveryTime: String) {
-        val totalPrice = items.sumOf { it.product.price * it.product.kilos }
+    fun placeOrder(items: List<CartItem>, deliveryTime: String, buyerId: Int?) {
+        val totalPrice = items.sumOf { it.product.price * it.quantityKilos }
+        // Assume for simplicity an order is for one farmer's items or we tag it with the first item's farmer
+        val farmerId = items.firstOrNull()?.product?.farmerId
+        
         val order = Order(
             id = "ORD-${System.currentTimeMillis() % 100000}",
             items = items.toList(),
             totalPrice = totalPrice,
             deliveryTime = deliveryTime,
             date = "May 07, 2026", // Mock date
-            status = "Active"
+            status = "Active",
+            buyerId = buyerId,
+            farmerId = farmerId
         )
         orders.add(0, order)
         farmerOrders.add(0, order)
@@ -124,8 +137,9 @@ object RequirementManager {
 object ProductRepository {
     val allProducts = mutableStateListOf<Product>()
 
-    init {
-        allProducts.addAll(SampleData.products)
+    fun loadProducts(products: List<Product>) {
+        allProducts.clear()
+        allProducts.addAll(products)
     }
 
     fun addProduct(product: Product) {

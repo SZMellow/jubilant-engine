@@ -29,7 +29,9 @@ fun OrdersScreen() {
     
     val visibleTabs = listOf("Active", "Completed", "Cancelled")
 
-    val filteredOrders = OrderManager.orders.filter { it.status == selectedTab }
+    val filteredOrders = OrderManager.orders.filter { 
+        it.status == selectedTab && it.buyerId == UserSession.currentUserId 
+    }
 
     Column(
         modifier = Modifier

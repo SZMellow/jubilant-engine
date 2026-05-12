@@ -1,10 +1,13 @@
 package com.example.mapaani3
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -17,12 +20,85 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+fun WeightSelector(
+    maxKilos: Double,
+    selectedKilos: Double,
+    onWeightChange: (Double) -> Unit
+) {
+    var textValue by remember(selectedKilos) {
+        val displayValue = if (selectedKilos == selectedKilos.toInt().toDouble()) {
+            selectedKilos.toInt().toString()
+        } else {
+            selectedKilos.toString()
+        }
+        mutableStateOf(displayValue)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        IconButton(
+            onClick = { if (selectedKilos > 1) onWeightChange(selectedKilos - 1) },
+            modifier = Modifier.background(colorResource(id = R.color.green2).copy(alpha = 0.1f), CircleShape)
+        ) {
+            Text("-", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = colorResource(id = R.color.green2))
+        }
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        OutlinedTextField(
+            value = textValue,
+            onValueChange = { newValue ->
+                textValue = newValue
+                val doubleValue = newValue.toDoubleOrNull()
+                if (doubleValue != null && doubleValue <= maxKilos && doubleValue >= 0) {
+                    onWeightChange(doubleValue)
+                } else if (newValue.isEmpty()) {
+                    onWeightChange(0.0)
+                }
+            },
+            modifier = Modifier.width(100.dp),
+            textStyle = MaterialTheme.typography.bodyLarge.copy(textAlign = TextAlign.Center),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            suffix = { Text("kg") }
+        )
+
+        Spacer(modifier = Modifier.width(16.dp))
+
+        IconButton(
+            onClick = { if (selectedKilos < maxKilos) onWeightChange(selectedKilos + 1) },
+            modifier = Modifier.background(colorResource(id = R.color.green2).copy(alpha = 0.1f), CircleShape)
+        ) {
+            Text("+", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = colorResource(id = R.color.green2))
+        }
+    }
+}
+
+@Composable
+fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: (Double) -> Unit) {
+    var selectedKilos by remember(product.id) { mutableStateOf(1.0) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = { /* Consumes click to prevent leakage to background */ }
+            )
+    ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Image Header
             Box(modifier = Modifier.fillMaxWidth().height(350.dp)) {
@@ -73,7 +149,7 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
                         color = colorResource(id = R.color.green1)
                     )
                     Text(
-                        text = "P${String.format("%.2f", product.price * product.kilos)}",
+                        text = "P${String.format("%.2f", product.price * selectedKilos)}",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = colorResource(id = R.color.green2)
@@ -97,7 +173,23 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
                     )
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (UserSession.currentUserType == UserType.BUYER) {
+                    Text(
+                        text = "Select Quantity",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorResource(id = R.color.green1)
+                    )
+                    WeightSelector(
+                        maxKilos = product.kilos,
+                        selectedKilos = selectedKilos,
+                        onWeightChange = { selectedKilos = it }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
                     text = "Description",
@@ -117,7 +209,8 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: () ->
 
                 if (UserSession.currentUserType == UserType.BUYER) {
                     Button(
-                        onClick = onAddToCart,
+                        onClick = { onAddToCart(selectedKilos) },
+                        enabled = selectedKilos > 0,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),

@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,12 +30,58 @@ import androidx.compose.ui.unit.sp
 import com.example.mapaani3.ui.theme.MapaAni3Theme
 
 import androidx.compose.material.icons.filled.Add
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 
 @Composable
 fun HomeScreen(onProductClick: (Product) -> Unit) {
+    val context = LocalContext.current
+    val db = remember { AppDatabase.getDatabase(context) }
+    val scope = rememberCoroutineScope()
+    
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<ProductCategory?>(null) }
     var showAddProductDialog by remember { mutableStateOf(false) }
+
+    // Sync from DB
+    LaunchedEffect(Unit) {
+        db.productDao().getAllProducts().collect { entities ->
+            if (entities.isEmpty()) {
+                // Seed database if empty
+                val initialProducts = SampleData.products.map { p ->
+                    ProductEntity(
+                        name = p.name,
+                        price = p.price,
+                        kilos = p.kilos,
+                        category = p.category.name,
+                        description = p.description,
+                        rating = p.rating,
+                        imageRes = p.imageRes,
+                        farmerName = "Sample Farmer",
+                        isBestSeller = p.isBestSeller,
+                        isRecommended = p.isRecommended
+                    )
+                }
+                db.productDao().insertProducts(initialProducts)
+            } else {
+                ProductRepository.loadProducts(entities.map { e ->
+                    Product(
+                        id = e.id.toString(),
+                        name = e.name,
+                        price = e.price,
+                        category = ProductCategory.valueOf(e.category),
+                        imageRes = e.imageRes,
+                        kilos = e.kilos,
+                        description = e.description,
+                        rating = e.rating,
+                        isBestSeller = e.isBestSeller,
+                        isRecommended = e.isRecommended
+                    )
+                })
+            }
+        }
+    }
 
     val filteredProducts = remember(searchQuery, selectedCategory, ProductRepository.allProducts.size) {
         ProductRepository.allProducts.filter { product ->
@@ -201,19 +248,28 @@ fun AddProductDialog(onDismiss: () -> Unit) {
             }
         },
         confirmButton = {
+            val context = LocalContext.current
+            val db = remember { AppDatabase.getDatabase(context) }
+            val scope = rememberCoroutineScope()
+            
             Button(
                 onClick = {
-                    val newProduct = Product(
-                        id = System.currentTimeMillis().toString(),
-                        name = name,
-                        price = price.toDoubleOrNull() ?: 0.0,
-                        kilos = kilos.toDoubleOrNull() ?: 1.0,
-                        category = selectedCategory,
-                        description = if (description.isNotBlank()) description else "Freshly harvested ${name}.",
-                        imageRes = R.drawable.vegertable // Default image for newly added products
-                    )
-                    ProductRepository.addProduct(newProduct)
-                    onDismiss()
+                    scope.launch {
+                        val productEntity = ProductEntity(
+                            name = name,
+                            price = price.toDoubleOrNull() ?: 0.0,
+                            kilos = kilos.toDoubleOrNull() ?: 1.0,
+                            category = selectedCategory.name,
+                            description = if (description.isNotBlank()) description else "Freshly harvested ${name}.",
+                            imageRes = R.drawable.vegertable,
+                            rating = 5.0,
+                            farmerName = "My Farm",
+                            isBestSeller = false,
+                            isRecommended = false
+                        )
+                        db.productDao().insertProduct(productEntity)
+                        onDismiss()
+                    }
                 },
                 enabled = name.isNotBlank() && price.isNotBlank()
             ) {
