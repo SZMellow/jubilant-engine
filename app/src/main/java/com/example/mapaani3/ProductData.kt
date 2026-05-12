@@ -20,6 +20,7 @@ enum class UserType {
 object UserSession {
     var currentUserType by mutableStateOf(UserType.BUYER)
     var currentUserId by mutableStateOf<String?>(null)
+    var isUserVerified by mutableStateOf(false)
 }
 
 data class Product(

@@ -51,6 +51,8 @@ class MainActivity : ComponentActivity() {
                                     if (user != null && user.passwordHash == hashedInput) {
                                         UserSession.currentUserId = user.id
                                         UserSession.currentUserType = if (user.userType == "FARMER") UserType.FARMER else UserType.BUYER
+                                        UserSession.isUserVerified = user.isVerified
+                                        android.widget.Toast.makeText(contextForToast, "Logged in as ${user.userType}. Verified: ${user.isVerified}", android.widget.Toast.LENGTH_SHORT).show()
                                         currentScreen = if (user.userType == "FARMER") "farmer_main" else "main"
                                     } else {
                                         android.widget.Toast.makeText(contextForToast, "Invalid email or password", android.widget.Toast.LENGTH_SHORT).show()
@@ -61,6 +63,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     "signup" -> {
+                        val contextForToast = LocalContext.current
                         SignUpScreen(
                             onSignUpClick = { name, email, password, type, proof ->
                                 scope.launch {
@@ -77,6 +80,8 @@ class MainActivity : ComponentActivity() {
                                     user?.let {
                                         UserSession.currentUserId = it.id
                                         UserSession.currentUserType = if (type == "FARMER") UserType.FARMER else UserType.BUYER
+                                        UserSession.isUserVerified = it.isVerified
+                                        android.widget.Toast.makeText(contextForToast, "Account Created. Verified: ${it.isVerified}", android.widget.Toast.LENGTH_SHORT).show()
                                         currentScreen = if (type == "FARMER") "farmer_main" else "main"
                                     }
                                 }
@@ -87,12 +92,14 @@ class MainActivity : ComponentActivity() {
                     "farmer_main" -> {
                         FarmerMain(onExit = { 
                             UserSession.currentUserId = null
+                            UserSession.isUserVerified = false
                             currentScreen = "login" 
                         })
                     }
                     "main" -> {
                         MainScreen(onExit = { 
                             UserSession.currentUserId = null
+                            UserSession.isUserVerified = false
                             currentScreen = "login" 
                         })
                     }

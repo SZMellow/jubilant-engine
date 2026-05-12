@@ -181,6 +181,22 @@ class AppRepository {
         return snapshot.documents.firstOrNull()?.toObject(UserEntity::class.java)
     }
 
+    suspend fun getUserById(userId: String): UserEntity? {
+        val snapshot = usersCollection.document(userId).get().await()
+        return snapshot.toObject(UserEntity::class.java)
+    }
+
+    fun getUserByIdStream(userId: String): Flow<UserEntity?> = callbackFlow {
+        val listener = usersCollection.document(userId).addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                close(error)
+                return@addSnapshotListener
+            }
+            trySend(snapshot?.toObject(UserEntity::class.java))
+        }
+        awaitClose { listener.remove() }
+    }
+
     suspend fun registerUser(user: UserEntity) {
         usersCollection.add(user).await()
     }

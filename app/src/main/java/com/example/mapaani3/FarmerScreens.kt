@@ -331,18 +331,56 @@ fun FarmerSettingsScreen(onExit: () -> Unit) {
 }
 
 @Composable
-fun FarmerSellingListScreen(onAddClick: () -> Unit) {
-    val repository = remember { AppRepository() }
+fun FarmerSellingListScreen(
+    onAddClick: () -> Unit,
+    isVerified: Boolean = UserSession.isUserVerified,
+    repository: AppRepository = remember { AppRepository() }
+) {
     var products by remember { mutableStateOf(emptyList<Product>()) }
+    var currentVerificationStatus by remember { mutableStateOf(isVerified) }
     
     LaunchedEffect(UserSession.currentUserId) {
         UserSession.currentUserId?.let { userId ->
+            // Listen for product changes
             repository.getFarmerProducts(userId).collect {
                 products = it
             }
         }
     }
 
+    // New: Listen for verification status changes in real-time
+    LaunchedEffect(UserSession.currentUserId) {
+        UserSession.currentUserId?.let { userId ->
+            repository.getUserByIdStream(userId).collect { user ->
+                user?.let {
+                    UserSession.isUserVerified = it.isVerified
+                    currentVerificationStatus = it.isVerified
+                }
+            }
+        }
+    }
+
+    val scope = rememberCoroutineScope()
+    
+    FarmerSellingListContent(
+        products = products,
+        isVerified = currentVerificationStatus,
+        onAddClick = onAddClick,
+        onDeleteProduct = { productId ->
+            scope.launch {
+                repository.deleteProduct(productId)
+            }
+        }
+    )
+}
+
+@Composable
+fun FarmerSellingListContent(
+    products: List<Product>,
+    isVerified: Boolean,
+    onAddClick: () -> Unit,
+    onDeleteProduct: (String) -> Unit
+) {
     Box(modifier = Modifier.fillMaxSize().background(colorResource(id = R.color.green2))) {
         Column(
             modifier = Modifier
@@ -364,91 +402,130 @@ fun FarmerSellingListScreen(onAddClick: () -> Unit) {
                 shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
                 color = Color.White
             ) {
-                if (products.isEmpty()) {
-                    Column(
-                        modifier = Modifier.fillMaxSize().background(colorResource(id = R.color.green2).copy(alpha = 0.8f)),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "Your selling list is empty",
-                            color = Color.White,
-                            fontSize = 18.sp
-                        )
-                        
-                        Spacer(modifier = Modifier.height(40.dp))
-                        
-                        IconButton(
-                            onClick = onAddClick,
-                            modifier = Modifier
-                                .size(100.dp)
-                                .background(Color.White.copy(alpha = 0.2f), CircleShape)
-                                .padding(8.dp)
-                                .background(Color.White.copy(alpha = 0.3f), CircleShape)
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (products.isEmpty()) {
+                        Column(
+                            modifier = Modifier.fillMaxSize().background(colorResource(id = R.color.green2).copy(alpha = 0.8f)),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(
-                                Icons.Default.Add,
-                                contentDescription = "Add",
-                                tint = Color.White,
-                                modifier = Modifier.size(48.dp)
+                            Text(
+                                text = "Your selling list is empty",
+                                color = Color.White,
+                                fontSize = 18.sp
+                            )
+                            
+                            Spacer(modifier = Modifier.height(40.dp))
+                            
+                            IconButton(
+                                onClick = if (isVerified) onAddClick else ({}),
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                                    .padding(8.dp)
+                                    .background(Color.White.copy(alpha = 0.3f), CircleShape)
+                            ) {
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = "Add",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Text(
+                                text = "Want To Add\nSomething?",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
                             )
                         }
-                        
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Text(
-                            text = "Want To Add\nSomething?",
-                            color = Color.White,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(24.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "Current Listings",
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = colorResource(id = R.color.green1)
-                                )
-                                TextButton(onClick = onAddClick) {
-                                    Text("+ Add More", color = colorResource(id = R.color.green2))
-                                }
-                            }
-                        }
-                        items(products) { product ->
-                            val scope = rememberCoroutineScope()
-                            ListingSummaryItem(
-                                name = product.name,
-                                date = "Today",
-                                price = "P${String.format("%.2f", product.price)}",
-                                quantity = "${product.kilos} kg",
-                                imageRes = product.imageRes,
-                                isDone = product.kilos <= 0,
-                                onCancel = {
-                                    scope.launch {
-                                        repository.deleteProduct(product.id)
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Current Listings",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = colorResource(id = R.color.green1)
+                                    )
+                                    TextButton(onClick = if (isVerified) onAddClick else ({})) {
+                                        Text("+ Add More", color = if (isVerified) colorResource(id = R.color.green2) else Color.Gray)
                                     }
                                 }
-                            )
+                            }
+                            items(products) { product ->
+                                ListingSummaryItem(
+                                    name = product.name,
+                                    date = "Today",
+                                    price = "P${String.format("%.2f", product.price)}",
+                                    quantity = "${product.kilos} kg",
+                                    imageRes = product.imageRes,
+                                    isDone = product.kilos <= 0,
+                                    onCancel = {
+                                        if (isVerified) {
+                                            onDeleteProduct(product.id)
+                                        }
+                                    }
+                                )
+                            }
+                            item { Spacer(modifier = Modifier.height(80.dp)) }
                         }
-                        item { Spacer(modifier = Modifier.height(80.dp)) }
+                    }
+
+                    // Verification Overlay
+                    if (!isVerified) {
+                        Surface(
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color.Gray.copy(alpha = 0.7f),
+                            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxSize().padding(32.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Lock,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(64.dp),
+                                    tint = Color.White
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "Account Verification Pending",
+                                    color = Color.White,
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Your selling capabilities are disabled while we verify your identity. This usually takes 24-48 hours.",
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
@@ -1032,9 +1109,29 @@ fun FarmerOrderItemPreview() {
 
 @Preview(showBackground = true)
 @Composable
-fun FarmerBottomNavBarPreview() {
+fun FarmerSellingListUnverifiedPreview() {
     MapaAni3Theme {
-        FarmerBottomNavBar(selectedTab = "home", onTabSelected = {})
+        FarmerSellingListContent(
+            products = emptyList(),
+            isVerified = false,
+            onAddClick = {},
+            onDeleteProduct = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun FarmerSellingListVerifiedPreview() {
+    MapaAni3Theme {
+        FarmerSellingListContent(
+            products = listOf(
+                Product("1", "Carrots", 25.0, ProductCategory.ROOTS, R.drawable.carrots, kilos = 50.0)
+            ),
+            isVerified = true,
+            onAddClick = {},
+            onDeleteProduct = {}
+        )
     }
 }
 

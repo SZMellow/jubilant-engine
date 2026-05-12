@@ -1,6 +1,7 @@
 package com.example.mapaani3
 
 import com.google.firebase.firestore.DocumentId
+import com.google.firebase.firestore.PropertyName
 
 data class UserEntity(
     @DocumentId val id: String = "",
@@ -8,7 +9,10 @@ data class UserEntity(
     val email: String = "",
     val passwordHash: String = "",
     val userType: String = "", // "BUYER" or "FARMER"
-    val identificationProof: String? = null
+    val identificationProof: String? = null,
+    @get:PropertyName("isVerified")
+    @set:PropertyName("isVerified")
+    var isVerified: Boolean = false
 )
 
 data class ProductEntity(
