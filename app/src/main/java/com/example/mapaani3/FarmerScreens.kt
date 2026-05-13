@@ -471,7 +471,7 @@ fun FarmerSellingListContent(
                                     date = "Today",
                                     price = "P${String.format("%.2f", product.price)}",
                                     quantity = "${product.kilos} kg",
-                                    imageRes = product.imageRes,
+                                    imageUrl = product.imageUrl,
                                     isDone = product.kilos <= 0,
                                     onCancel = {
                                         if (isVerified) {
@@ -652,12 +652,7 @@ fun AddCropScreen(onBack: () -> Unit, onNext: (Product) -> Unit) {
                                 kilos = kilos.toDoubleOrNull() ?: 1.0,
                                 description = if (description.isNotBlank()) description else "Freshly harvested ${name}.",
                                 category = selectedCategory,
-                                imageRes = when(selectedCategory) {
-                                    ProductCategory.ROOTS -> R.drawable.roots
-                                    ProductCategory.LEAFY -> R.drawable.leafy
-                                    ProductCategory.BEANS -> R.drawable.beans
-                                    ProductCategory.GOURDS -> R.drawable.gourd
-                                },
+                                imageUrl = "", // To be updated by photo
                                 farmerId = UserSession.currentUserId,
                                 farmerName = null // Will be handled by repository if needed
                             )
@@ -764,7 +759,7 @@ fun ConfirmListingScreen(drafts: List<Product>, address: String, onAddressChange
                             date = "Ready to list",
                             price = "P${product.price}",
                             quantity = "${product.kilos} kg",
-                            imageRes = product.imageRes
+                            imageUrl = product.imageUrl
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                     }
@@ -788,7 +783,7 @@ fun ConfirmListingScreen(drafts: List<Product>, address: String, onAddressChange
 }
 
 @Composable
-fun ListingSummaryItem(name: String, date: String, price: String, quantity: String, imageRes: Int, isDone: Boolean = false, onCancel: () -> Unit = {}) {
+fun ListingSummaryItem(name: String, date: String, price: String, quantity: String, imageUrl: String, isDone: Boolean = false, onCancel: () -> Unit = {}) {
     var currentName by remember { mutableStateOf(name) }
     var currentPrice by remember { mutableStateOf(price) }
     var showEditDialog by remember { mutableStateOf(false) }
@@ -834,10 +829,9 @@ fun ListingSummaryItem(name: String, date: String, price: String, quantity: Stri
             .alpha(if (isDone) 0.5f else 1.0f),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = painterResource(id = imageRes),
+        ProductImage(
+            imageUrl = imageUrl,
             contentDescription = currentName,
-            contentScale = ContentScale.Crop,
             modifier = Modifier
                 .size(70.dp)
                 .clip(RoundedCornerShape(12.dp))
@@ -1092,7 +1086,7 @@ fun FarmerOrderItemPreview() {
                 id = "ORD-123456789",
                 items = listOf(
                     CartItem(
-                        product = Product("1", "Carrots", 25.0, ProductCategory.ROOTS, R.drawable.carrots),
+                        product = Product("1", "Carrots", 25.0, ProductCategory.ROOTS, ""),
                         quantityKilos = 5.0
                     )
                 ),
@@ -1126,7 +1120,7 @@ fun FarmerSellingListVerifiedPreview() {
     MapaAni3Theme {
         FarmerSellingListContent(
             products = listOf(
-                Product("1", "Carrots", 25.0, ProductCategory.ROOTS, R.drawable.carrots, kilos = 50.0)
+                Product("1", "Carrots", 25.0, ProductCategory.ROOTS, "", kilos = 50.0)
             ),
             isVerified = true,
             onAddClick = {},

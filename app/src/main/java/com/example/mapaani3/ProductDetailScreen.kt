@@ -108,10 +108,9 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: (Doub
         ) {
             // Image Header
             Box(modifier = Modifier.fillMaxWidth().height(350.dp)) {
-                Image(
-                    painter = painterResource(id = product.imageRes),
+                ProductImage(
+                    imageUrl = product.imageUrl,
                     contentDescription = product.name,
-                    contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
                 

@@ -198,11 +198,10 @@ fun OrderItemCard(order: Order, onCancel: () -> Unit) {
 
             order.items.forEach { item ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        painter = painterResource(id = item.product.imageRes),
+                    ProductImage(
+                        imageUrl = item.product.imageUrl,
                         contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = Color.Unspecified
+                        modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = "${item.product.name} (${item.quantityKilos} kg)", fontSize = 14.sp)

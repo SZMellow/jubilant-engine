@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -27,7 +28,7 @@ class MainActivity : ComponentActivity() {
             MapaAni3Theme {
                 val repository = remember { AppRepository() }
                 val scope = rememberCoroutineScope()
-                var currentScreen by remember { mutableStateOf("splash") }
+                var currentScreen by rememberSaveable { mutableStateOf("splash") }
 
                 // Authentication and Navigation Logic
                 when (currentScreen) {
@@ -50,10 +51,18 @@ class MainActivity : ComponentActivity() {
                                     val hashedInput = PasswordHasher.hash(password)
                                     if (user != null && user.passwordHash == hashedInput) {
                                         UserSession.currentUserId = user.id
-                                        UserSession.currentUserType = if (user.userType == "FARMER") UserType.FARMER else UserType.BUYER
+                                        UserSession.currentUserType = when(user.userType) {
+                                            "FARMER" -> UserType.FARMER
+                                            "ADMIN" -> UserType.ADMIN
+                                            else -> UserType.BUYER
+                                        }
                                         UserSession.isUserVerified = user.isVerified
                                         android.widget.Toast.makeText(contextForToast, "Logged in as ${user.userType}. Verified: ${user.isVerified}", android.widget.Toast.LENGTH_SHORT).show()
-                                        currentScreen = if (user.userType == "FARMER") "farmer_main" else "main"
+                                        currentScreen = when(UserSession.currentUserType) {
+                                            UserType.FARMER -> "farmer_main"
+                                            UserType.ADMIN -> "admin_main"
+                                            else -> "main"
+                                        }
                                     } else {
                                         android.widget.Toast.makeText(contextForToast, "Invalid email or password", android.widget.Toast.LENGTH_SHORT).show()
                                     }
@@ -97,17 +106,23 @@ class MainActivity : ComponentActivity() {
                         })
                     }
                     "main" -> {
-                        MainScreen(onExit = { 
-                            UserSession.currentUserId = null
-                            UserSession.isUserVerified = false
-                            currentScreen = "login" 
-                        })
+                                        MainScreen(onExit = { 
+                                            UserSession.currentUserId = null
+                                            UserSession.isUserVerified = false
+                                            currentScreen = "login" 
+                                        })
+                                    }
+                                    "admin_main" -> {
+                                        AdminScreen(onExit = {
+                                            UserSession.currentUserId = null
+                                            currentScreen = "login"
+                                        })
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-            }
-        }
-    }
-}
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {

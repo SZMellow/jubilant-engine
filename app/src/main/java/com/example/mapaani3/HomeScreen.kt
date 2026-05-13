@@ -247,10 +247,9 @@ fun RecommendedItem(product: Product, modifier: Modifier = Modifier) {
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column {
-            Image(
-                painter = painterResource(id = product.imageRes),
+            ProductImage(
+                imageUrl = product.imageUrl,
                 contentDescription = product.name,
-                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp)

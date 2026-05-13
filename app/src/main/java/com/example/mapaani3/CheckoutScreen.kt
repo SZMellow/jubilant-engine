@@ -26,12 +26,19 @@ import androidx.compose.ui.unit.sp
 import com.example.mapaani3.ui.theme.MapaAni3Theme
 import kotlinx.coroutines.launch
 
+import androidx.lifecycle.viewmodel.compose.viewModel
+
 @Composable
-fun CheckoutScreen(onBack: () -> Unit, onOrderPlaced: () -> Unit) {
-    val repository = remember { AppRepository() }
+fun CheckoutScreen(
+    onBack: () -> Unit, 
+    onOrderPlaced: () -> Unit,
+    viewModel: CheckoutViewModel = viewModel()
+) {
+    val deliveryTime by viewModel.deliveryTime.collectAsState()
+    val isPriority by viewModel.isPriority.collectAsState()
+    val notes by viewModel.notes.collectAsState()
     val scope = rememberCoroutineScope()
 
-    var selectedTime by remember { mutableStateOf("Morning (8AM - 11AM)") }
     val deliveryTimes = listOf(
         "Morning (8AM - 11AM)",
         "Afternoon (1PM - 4PM)",
@@ -87,16 +94,16 @@ fun CheckoutScreen(onBack: () -> Unit, onOrderPlaced: () -> Unit) {
                             .padding(vertical = 4.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(
-                                if (selectedTime == time) colorResource(id = R.color.green2).copy(alpha = 0.1f)
+                                if (deliveryTime == time) colorResource(id = R.color.green2).copy(alpha = 0.1f)
                                 else Color.Transparent
                             )
-                            .clickable { selectedTime = time }
+                            .clickable { viewModel.updateDeliveryTime(time) }
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         RadioButton(
-                            selected = selectedTime == time,
-                            onClick = { selectedTime = time },
+                            selected = deliveryTime == time,
+                            onClick = { viewModel.updateDeliveryTime(time) },
                             colors = RadioButtonDefaults.colors(selectedColor = colorResource(id = R.color.green2))
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -105,6 +112,62 @@ fun CheckoutScreen(onBack: () -> Unit, onOrderPlaced: () -> Unit) {
                         Text(text = time, fontSize = 14.sp)
                     }
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Task 3: Priority Delivery Checkbox
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(colorResource(id = R.color.yellowrice).copy(alpha = 0.1f))
+                        .clickable { viewModel.togglePriority(!isPriority) }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = isPriority,
+                        onCheckedChange = { viewModel.togglePriority(it) },
+                        colors = CheckboxDefaults.colors(checkedColor = colorResource(id = R.color.green2))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Priority Delivery",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colorResource(id = R.color.green1)
+                        )
+                        Text(
+                            text = "Get your order faster for academic defense priority!",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Order Notes",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorResource(id = R.color.green1)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { viewModel.updateNotes(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Add special instructions or notes...") },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colorResource(id = R.color.green2),
+                        unfocusedBorderColor = Color.LightGray
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -123,10 +186,9 @@ fun CheckoutScreen(onBack: () -> Unit, onOrderPlaced: () -> Unit) {
                             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Image(
-                                painter = painterResource(id = item.product.imageRes),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
+                            // Task 5: Use Coil AsyncImage
+                            com.example.mapaani3.ProductImage(
+                                imageUrl = item.product.imageUrl,
                                 modifier = Modifier.size(50.dp).clip(RoundedCornerShape(8.dp))
                             )
                             Spacer(modifier = Modifier.width(12.dp))
@@ -182,14 +244,8 @@ fun CheckoutScreen(onBack: () -> Unit, onOrderPlaced: () -> Unit) {
 
                 Button(
                     onClick = {
-                        scope.launch {
-                            val buyerId = UserSession.currentUserId ?: ""
-                            if (buyerId.isNotEmpty()) {
-                                repository.placeOrder(CartManager.items, selectedTime, buyerId)
-                                CartManager.clear()
-                                onOrderPlaced()
-                            }
-                        }
+                        val buyerId = UserSession.currentUserId ?: ""
+                        viewModel.confirmBooking(CartManager.items, buyerId, onOrderPlaced)
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = colorResource(id = R.color.green2)),
