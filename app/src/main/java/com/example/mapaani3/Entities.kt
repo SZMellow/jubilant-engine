@@ -12,7 +12,11 @@ data class UserEntity(
     val identificationProof: String? = null,
     @get:PropertyName("isVerified")
     @set:PropertyName("isVerified")
-    var isVerified: Boolean = false
+    var isVerified: Boolean = false,
+    @get:PropertyName("isActive")
+    @set:PropertyName("isActive")
+    var isActive: Boolean = true
+    
 )
 
 data class ProductEntity(
@@ -21,7 +25,7 @@ data class ProductEntity(
     val price: Double = 0.0,
     val kilos: Double = 0.0, // Inventory available
     val description: String = "",
-    val imageRes: Int = 0,
+    val imageUrl: String = "",
     val category: String = "",
     val farmerId: String = "", // Link to UserEntity (Owner)
     val farmerName: String = ""
@@ -32,7 +36,7 @@ data class OrderItemEntity(
     val productName: String = "",
     val quantityKilos: Double = 0.0,
     val priceAtTime: Double = 0.0,
-    val imageRes: Int = 0
+    val imageUrl: String = ""
 )
 
 data class OrderEntity(
@@ -45,5 +49,8 @@ data class OrderEntity(
     val deliveryTime: String = "",
     val date: String = "",
     val status: String = "Active", // "Active", "Completed", "Cancelled"
-    val items: List<OrderItemEntity> = emptyList()
+    val notes: String = "",
+    val items: List<OrderItemEntity> = emptyList(),
+    val priorityLevel: Int = 1,
+    val timestamp: Long = System.currentTimeMillis()
 )

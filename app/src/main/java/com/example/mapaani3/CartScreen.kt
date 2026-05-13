@@ -128,10 +128,9 @@ fun CartItemRow(item: CartItem, onProductClick: (Product) -> Unit) {
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(id = item.product.imageRes),
+            ProductImage(
+                imageUrl = item.product.imageUrl,
                 contentDescription = item.product.name,
-                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(80.dp)
                     .clip(RoundedCornerShape(12.dp))

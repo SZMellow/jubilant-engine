@@ -14,7 +14,7 @@ enum class ProductCategory(val displayName: String, @DrawableRes val iconRes: In
 }
 
 enum class UserType {
-    FARMER, BUYER
+    FARMER, BUYER, ADMIN
 }
 
 object UserSession {
@@ -28,7 +28,7 @@ data class Product(
     val name: String,
     val price: Double,
     val category: ProductCategory,
-    @DrawableRes val imageRes: Int,
+    val imageUrl: String = "",
     val kilos: Double = 1.0,
     val description: String = "Freshly harvested locally grown vegetables. High quality and pesticide-free from our local farms to your table.",
     val farmerId: String? = null,
@@ -71,9 +71,12 @@ data class Order(
     val deliveryTime: String,
     val date: String,
     var status: String = "Active",
+    val notes: String = "",
     val buyerId: String? = null,
     val farmerId: String? = null,
-    val farmerName: String? = null
+    val farmerName: String? = null,
+    val priorityLevel: Int = 1,
+    val timestamp: Long = System.currentTimeMillis()
 )
 
 object OrderManager {
@@ -165,57 +168,24 @@ object FarmerManager {
 
 object SampleData {
     val products = listOf(
-        Product("1", "Onions", 103.0, ProductCategory.ROOTS, R.drawable.onions, kilos = 50.0),
-        Product("2", "Ginger", 50.0, ProductCategory.ROOTS, R.drawable.ginger, kilos = 30.0),
-        Product("3", "Potatoes", 12.99, ProductCategory.ROOTS, R.drawable.potatoes, kilos = 100.0),
-        Product("4", "Cabbage", 8.20, ProductCategory.LEAFY, R.drawable.cabbage, kilos = 40.0),
-        Product("5", "Eggplant", 10.0, ProductCategory.GOURDS, R.drawable.eggplant, kilos = 25.0),
-        Product("6", "Carrots", 25.0, ProductCategory.ROOTS, R.drawable.carrots, kilos = 35.0),
-        Product("7", "Lettuce", 35.0, ProductCategory.LEAFY, R.drawable.lettuce, kilos = 20.0),
-        Product("8", "String Beans", 15.0, ProductCategory.BEANS, R.drawable.sitaw, kilos = 15.0),
-        Product("9", "Bitter Gourd", 20.0, ProductCategory.GOURDS, R.drawable.bittergourd, kilos = 10.0)
+        Product("1", "Onions", 103.0, ProductCategory.ROOTS, "", kilos = 50.0),
+        Product("2", "Ginger", 50.0, ProductCategory.ROOTS, "", kilos = 30.0),
+        Product("3", "Potatoes", 12.99, ProductCategory.ROOTS, "", kilos = 100.0),
+        Product("4", "Cabbage", 8.20, ProductCategory.LEAFY, "", kilos = 40.0),
+        Product("5", "Eggplant", 10.0, ProductCategory.GOURDS, "", kilos = 25.0),
+        Product("6", "Carrots", 25.0, ProductCategory.ROOTS, "", kilos = 35.0),
+        Product("7", "Lettuce", 35.0, ProductCategory.LEAFY, "", kilos = 20.0),
+        Product("8", "String Beans", 15.0, ProductCategory.BEANS, "", kilos = 15.0),
+        Product("9", "Bitter Gourd", 20.0, ProductCategory.GOURDS, "", kilos = 10.0)
     )
 
     fun getFarmerSpecificProducts(farmerId: String, farmerName: String = "Unknown", farmerIndex: Int = 1): List<Product> {
-        val index = ((farmerIndex - 1) % 5) + 1 // Ensure we get 1 to 5
-        
         return listOf(
-            Product("", "Tomato", 45.0, ProductCategory.GOURDS, getDrawableId("tomato$index"), kilos = 100.0, farmerId = farmerId, farmerName = farmerName),
-            Product("", "Cucumber", 30.0, ProductCategory.GOURDS, getDrawableId("cucumber$index"), kilos = 50.0, farmerId = farmerId, farmerName = farmerName),
-            Product("", "Spinach", 25.0, ProductCategory.LEAFY, getDrawableId("spinach$index"), kilos = 20.0, farmerId = farmerId, farmerName = farmerName),
-            Product("", "Radish", 15.0, ProductCategory.ROOTS, getDrawableId("radish$index"), kilos = 40.0, farmerId = farmerId, farmerName = farmerName),
-            Product("", "Peas", 60.0, ProductCategory.BEANS, getDrawableId("peas$index"), kilos = 15.0, farmerId = farmerId, farmerName = farmerName)
+            Product("", "Tomato", 45.0, ProductCategory.GOURDS, "", kilos = 100.0, farmerId = farmerId, farmerName = farmerName),
+            Product("", "Cucumber", 30.0, ProductCategory.GOURDS, "", kilos = 50.0, farmerId = farmerId, farmerName = farmerName),
+            Product("", "Spinach", 25.0, ProductCategory.LEAFY, "", kilos = 20.0, farmerId = farmerId, farmerName = farmerName),
+            Product("", "Radish", 15.0, ProductCategory.ROOTS, "", kilos = 40.0, farmerId = farmerId, farmerName = farmerName),
+            Product("", "Peas", 60.0, ProductCategory.BEANS, "", kilos = 15.0, farmerId = farmerId, farmerName = farmerName)
         )
-    }
-
-    private fun getDrawableId(name: String): Int {
-        return when (name) {
-            "tomato1" -> R.drawable.tomato1
-            "tomato2" -> R.drawable.tomato2
-            "tomato3" -> R.drawable.tomato3
-            "tomato4" -> R.drawable.tomato4
-            "tomato5" -> R.drawable.tomato5
-            "cucumber1" -> R.drawable.cucumber1
-            "cucumber2" -> R.drawable.cucumber2
-            "cucumber3" -> R.drawable.cucumber3
-            "cucumber4" -> R.drawable.cucumber4
-            "cucumber5" -> R.drawable.cucumber5
-            "spinach1" -> R.drawable.spinach1
-            "spinach2" -> R.drawable.spinach2
-            "spinach3" -> R.drawable.spinach3
-            "spinach4" -> R.drawable.spinach4
-            "spinach5" -> R.drawable.spinach5
-            "radish1" -> R.drawable.radish1
-            "radish2" -> R.drawable.radish2
-            "radish3" -> R.drawable.radish3
-            "radish4" -> R.drawable.radish4
-            "radish5" -> R.drawable.radish5
-            "peas1" -> R.drawable.peas1
-            "peas2" -> R.drawable.peas2
-            "peas3" -> R.drawable.peas3
-            "peas4" -> R.drawable.peas4
-            "peas5" -> R.drawable.peas5
-            else -> R.drawable.gourd
-        }
     }
 }

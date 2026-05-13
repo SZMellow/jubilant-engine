@@ -1,0 +1,21 @@
+# Task Management
+
+- [/] Task 1: Refactor Firestore Entities
+    - [ ] Update `Entities.kt`
+    - [ ] Update `ProductData.kt`
+    - [ ] Update mappers in `AppRepository.kt`
+- [ ] Task 2: Implement Process Lifecycle Handling
+    - [ ] Update `MainScreen.kt` navigation state
+    - [ ] Create `CheckoutViewModel.kt`
+    - [ ] Update `CheckoutScreen.kt` to use ViewModel
+- [ ] Task 3: Implement Priority Scheduling
+    - [ ] Add priority checkbox to `CheckoutScreen.kt`
+    - [ ] Update `AppRepository.kt` placeOrder and queries
+- [ ] Task 4: Create Admin Dashboard
+    - [ ] Add admin functions to `AppRepository.kt`
+    - [ ] Create `AdminScreen.kt`
+    - [ ] Integrate `AdminScreen` into navigation
+- [ ] Task 5: Coil Image Loading
+    - [ ] Add Coil dependency to `build.gradle.kts`
+    - [ ] Replace `painterResource` with `AsyncImage` across the app
+- [ ] Final Build and Verification

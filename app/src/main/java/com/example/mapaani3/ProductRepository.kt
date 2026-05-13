@@ -63,6 +63,8 @@ class AppRepository {
 
     fun getBuyerOrders(buyerId: String): Flow<List<Order>> = callbackFlow {
         val listener = ordersCollection.whereEqualTo("buyerId", buyerId)
+            .orderBy("priorityLevel", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -78,6 +80,8 @@ class AppRepository {
 
     fun getFarmerOrders(farmerId: String): Flow<List<Order>> = callbackFlow {
         val listener = ordersCollection.whereEqualTo("farmerId", farmerId)
+            .orderBy("priorityLevel", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     close(error)
@@ -91,7 +95,7 @@ class AppRepository {
         awaitClose { listener.remove() }
     }
 
-    suspend fun placeOrder(items: List<CartItem>, deliveryTime: String, buyerId: String) {
+    suspend fun placeOrder(items: List<CartItem>, deliveryTime: String, buyerId: String, priorityLevel: Int = 1, notes: String = "") {
         val firstProduct = items.firstOrNull()?.product
         val farmerId = firstProduct?.farmerId ?: ""
         val farmerName = firstProduct?.farmerName ?: ""
@@ -105,7 +109,7 @@ class AppRepository {
                 productName = item.product.name,
                 quantityKilos = item.quantityKilos,
                 priceAtTime = item.product.price,
-                imageRes = item.product.imageRes
+                imageUrl = item.product.imageUrl
             )
         }
 
@@ -118,7 +122,10 @@ class AppRepository {
             deliveryTime = deliveryTime,
             date = "May 13, 2026",
             status = "Active",
-            items = orderItems
+            notes = notes,
+            items = orderItems,
+            priorityLevel = priorityLevel,
+            timestamp = System.currentTimeMillis()
         )
 
         ordersCollection.add(orderEntity).await()
@@ -201,6 +208,47 @@ class AppRepository {
         usersCollection.add(user).await()
     }
 
+    // --- Admin Operations ---
+
+    fun getAllOrders(): Flow<List<Order>> = callbackFlow {
+        val listener = ordersCollection
+            .orderBy("priorityLevel", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.ASCENDING)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val orders = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(OrderEntity::class.java)?.toOrderDomain()
+                } ?: emptyList()
+                trySend(orders)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    fun getFarmers(): Flow<List<UserEntity>> = callbackFlow {
+        val listener = usersCollection.whereEqualTo("userType", "FARMER")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    close(error)
+                    return@addSnapshotListener
+                }
+                val users = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(UserEntity::class.java)
+                } ?: emptyList()
+                trySend(users)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    suspend fun updateUserStatus(userId: String, isVerified: Boolean, isActive: Boolean) {
+        usersCollection.document(userId).update(
+            "isVerified", isVerified,
+            "isActive", isActive
+        ).await()
+    }
+
     // --- Helper Mappers ---
 
     private fun ProductEntity.toProductDomain() = Product(
@@ -208,7 +256,7 @@ class AppRepository {
         name = name,
         price = price,
         category = try { ProductCategory.valueOf(category) } catch(e: Exception) { ProductCategory.ROOTS },
-        imageRes = imageRes,
+        imageUrl = imageUrl,
         kilos = kilos,
         description = description,
         farmerId = farmerId,
@@ -223,9 +271,12 @@ class AppRepository {
         deliveryTime = deliveryTime,
         date = date,
         status = status,
+        notes = notes,
         buyerId = buyerId,
         farmerId = farmerId,
-        farmerName = farmerName
+        farmerName = farmerName,
+        priorityLevel = priorityLevel,
+        timestamp = timestamp
     )
 
     private fun OrderItemEntity.toCartItemDomain() = CartItem(
@@ -234,7 +285,7 @@ class AppRepository {
             name = productName,
             price = priceAtTime,
             category = ProductCategory.ROOTS, // Default
-            imageRes = imageRes
+            imageUrl = imageUrl
         ),
         quantityKilos = quantityKilos
     )
@@ -245,7 +296,7 @@ class AppRepository {
         price = price,
         kilos = kilos,
         description = description,
-        imageRes = imageRes,
+        imageUrl = imageUrl,
         category = category.name,
         farmerId = farmerId ?: "",
         farmerName = farmerName ?: ""

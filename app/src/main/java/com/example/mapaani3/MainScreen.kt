@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,9 +27,9 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector, val selecte
 
 @Composable
 fun MainScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
-    var selectedItem by remember { mutableStateOf(0) }
-    var selectedProduct by remember { mutableStateOf<Product?>(null) }
-    var currentScreen by remember { mutableStateOf("main") } // main, checkout
+    var selectedItem by rememberSaveable { mutableIntStateOf(0) }
+    var currentScreen by rememberSaveable { mutableStateOf("main") } // main, checkout
+    var selectedProductId by rememberSaveable { mutableStateOf<String?>(null) }
 
     val items = listOf(
         BottomNavItem.Home,
@@ -40,6 +41,10 @@ fun MainScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
 
     val cartBadgeCount by remember {
         derivedStateOf { CartManager.items.size }
+    }
+
+    val selectedProduct = remember(selectedProductId, ProductRepository.allProducts.size) {
+        ProductRepository.allProducts.find { it.id == selectedProductId }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -83,7 +88,7 @@ fun MainScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                                 selected = selectedItem == index,
                                 onClick = { 
                                     selectedItem = index 
-                                    selectedProduct = null // Reset details view when switching tabs
+                                    selectedProductId = null // Reset details view when switching tabs
                                 },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = Color.White,
@@ -98,7 +103,7 @@ fun MainScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
                 ContentScreen(
                     modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()),
                     selectedIndex = selectedItem,
-                    onProductClick = { selectedProduct = it },
+                    onProductClick = { selectedProductId = it.id },
                     onCheckout = { currentScreen = "checkout" },
                     onExit = onExit
                 )
@@ -109,10 +114,10 @@ fun MainScreen(onExit: () -> Unit, modifier: Modifier = Modifier) {
         selectedProduct?.let { product ->
             ProductDetailScreen(
                 product = product,
-                onBack = { selectedProduct = null },
+                onBack = { selectedProductId = null },
                 onAddToCart = { kilos ->
                     CartManager.addProduct(product, kilos)
-                    selectedProduct = null
+                    selectedProductId = null
                     selectedItem = 1 // Switch to Cart tab
                 }
             )
