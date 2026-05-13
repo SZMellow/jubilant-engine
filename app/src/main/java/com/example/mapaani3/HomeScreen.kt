@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -240,6 +241,10 @@ fun RecommendedGrid(items: List<Product>, onProductClick: (Product) -> Unit) {
 
 @Composable
 fun RecommendedItem(product: Product, modifier: Modifier = Modifier) {
+    val safeImageRes = remember(product.name) {
+        getDrawableForProductName(product.name, product.category.iconRes)
+    }
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
@@ -248,7 +253,7 @@ fun RecommendedItem(product: Product, modifier: Modifier = Modifier) {
     ) {
         Column {
             Image(
-                painter = painterResource(id = product.imageRes),
+                painter = painterResource(id = safeImageRes),
                 contentDescription = product.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier

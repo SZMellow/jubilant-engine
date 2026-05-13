@@ -1,5 +1,7 @@
 package com.example.mapaani3
 
+import android.content.Context
+import com.example.mapaani3.R
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -14,7 +16,7 @@ enum class ProductCategory(val displayName: String, @DrawableRes val iconRes: In
 }
 
 enum class UserType {
-    FARMER, BUYER
+    FARMER, BUYER, ADMIN
 }
 
 object UserSession {
@@ -163,6 +165,26 @@ object FarmerManager {
     }
 }
 
+fun getDrawableForProductName(productName: String, fallbackIcon: Int): Int {
+    val nameToMatch = productName.lowercase()
+    
+    return when {
+        nameToMatch.contains("carrot") -> R.drawable.carrots
+        nameToMatch.contains("cabbage") -> R.drawable.cabbage
+        nameToMatch.contains("eggplant") -> R.drawable.eggplant
+        nameToMatch.contains("onion") -> R.drawable.onions
+        nameToMatch.contains("potato") -> R.drawable.potatoes
+        nameToMatch.contains("sitaw") || nameToMatch.contains("bean") || nameToMatch.contains("pea") -> R.drawable.sitaw
+        nameToMatch.contains("ginger") -> R.drawable.ginger
+        nameToMatch.contains("lettuce") || nameToMatch.contains("spinach") || nameToMatch.contains("leaf") -> R.drawable.lettuce
+        nameToMatch.contains("rice") -> R.drawable.rice
+        nameToMatch.contains("bitter") -> R.drawable.bittergourd
+        nameToMatch.contains("tomato") || nameToMatch.contains("cucumber") || nameToMatch.contains("gourd") -> R.drawable.gourd
+        nameToMatch.contains("radish") -> R.drawable.roots
+        else -> fallbackIcon
+    }
+}
+
 object SampleData {
     val products = listOf(
         Product("1", "Onions", 103.0, ProductCategory.ROOTS, R.drawable.onions, kilos = 50.0),
@@ -189,32 +211,12 @@ object SampleData {
     }
 
     private fun getDrawableId(name: String): Int {
-        return when (name) {
-            "tomato1" -> R.drawable.tomato1
-            "tomato2" -> R.drawable.tomato2
-            "tomato3" -> R.drawable.tomato3
-            "tomato4" -> R.drawable.tomato4
-            "tomato5" -> R.drawable.tomato5
-            "cucumber1" -> R.drawable.cucumber1
-            "cucumber2" -> R.drawable.cucumber2
-            "cucumber3" -> R.drawable.cucumber3
-            "cucumber4" -> R.drawable.cucumber4
-            "cucumber5" -> R.drawable.cucumber5
-            "spinach1" -> R.drawable.spinach1
-            "spinach2" -> R.drawable.spinach2
-            "spinach3" -> R.drawable.spinach3
-            "spinach4" -> R.drawable.spinach4
-            "spinach5" -> R.drawable.spinach5
-            "radish1" -> R.drawable.radish1
-            "radish2" -> R.drawable.radish2
-            "radish3" -> R.drawable.radish3
-            "radish4" -> R.drawable.radish4
-            "radish5" -> R.drawable.radish5
-            "peas1" -> R.drawable.peas1
-            "peas2" -> R.drawable.peas2
-            "peas3" -> R.drawable.peas3
-            "peas4" -> R.drawable.peas4
-            "peas5" -> R.drawable.peas5
+        return when {
+            name.startsWith("tomato") -> R.drawable.gourd
+            name.startsWith("cucumber") -> R.drawable.gourd
+            name.startsWith("spinach") -> R.drawable.leafy
+            name.startsWith("radish") -> R.drawable.roots
+            name.startsWith("peas") -> R.drawable.beans
             else -> R.drawable.gourd
         }
     }
