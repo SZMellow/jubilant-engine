@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -793,6 +794,10 @@ fun ListingSummaryItem(name: String, date: String, price: String, quantity: Stri
     var currentPrice by remember { mutableStateOf(price) }
     var showEditDialog by remember { mutableStateOf(false) }
 
+    val safeImageRes = remember(name) {
+        getDrawableForProductName(name, R.drawable.logo)
+    }
+
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
@@ -835,7 +840,7 @@ fun ListingSummaryItem(name: String, date: String, price: String, quantity: Stri
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
-            painter = painterResource(id = imageRes),
+            painter = painterResource(id = safeImageRes),
             contentDescription = currentName,
             contentScale = ContentScale.Crop,
             modifier = Modifier

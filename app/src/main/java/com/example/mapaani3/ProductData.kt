@@ -1,5 +1,6 @@
 package com.example.mapaani3
 
+import com.example.mapaani3.R
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -14,7 +15,7 @@ enum class ProductCategory(val displayName: String, @DrawableRes val iconRes: In
 }
 
 enum class UserType {
-    FARMER, BUYER
+    FARMER, BUYER, ADMIN
 }
 
 object UserSession {
@@ -160,6 +161,26 @@ object FarmerManager {
     
     fun removeListing(productId: String) {
         myListings.removeAll { it.id == productId }
+    }
+}
+
+fun getDrawableForProductName(productName: String, fallbackIcon: Int): Int {
+    val nameToMatch = productName.lowercase()
+    
+    return when {
+        nameToMatch.contains("carrot") -> R.drawable.carrots
+        nameToMatch.contains("cabbage") -> R.drawable.cabbage
+        nameToMatch.contains("eggplant") -> R.drawable.eggplant
+        nameToMatch.contains("onion") -> R.drawable.onions
+        nameToMatch.contains("potato") -> R.drawable.potatoes
+        nameToMatch.contains("sitaw") || nameToMatch.contains("bean") || nameToMatch.contains("pea") -> R.drawable.sitaw
+        nameToMatch.contains("ginger") -> R.drawable.ginger
+        nameToMatch.contains("lettuce") || nameToMatch.contains("spinach") || nameToMatch.contains("leaf") -> R.drawable.lettuce
+        nameToMatch.contains("rice") -> R.drawable.rice
+        nameToMatch.contains("bitter") -> R.drawable.bittergourd
+        nameToMatch.contains("tomato") || nameToMatch.contains("cucumber") || nameToMatch.contains("gourd") -> R.drawable.gourd
+        nameToMatch.contains("radish") -> R.drawable.roots
+        else -> fallbackIcon
     }
 }
 

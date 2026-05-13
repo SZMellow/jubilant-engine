@@ -16,11 +16,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.mapaani3.ui.theme.MapaAni3Theme
+import com.google.firebase.Firebase
+import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        DatabaseSeeder.seedDatabase(Firebase.firestore)
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -50,10 +53,18 @@ class MainActivity : ComponentActivity() {
                                     val hashedInput = PasswordHasher.hash(password)
                                     if (user != null && user.passwordHash == hashedInput) {
                                         UserSession.currentUserId = user.id
-                                        UserSession.currentUserType = if (user.userType == "FARMER") UserType.FARMER else UserType.BUYER
+                                        UserSession.currentUserType = when (user.userType) {
+                                            "FARMER" -> UserType.FARMER
+                                            "ADMIN" -> UserType.ADMIN
+                                            else -> UserType.BUYER
+                                        }
                                         UserSession.isUserVerified = user.isVerified
                                         android.widget.Toast.makeText(contextForToast, "Logged in as ${user.userType}. Verified: ${user.isVerified}", android.widget.Toast.LENGTH_SHORT).show()
-                                        currentScreen = if (user.userType == "FARMER") "farmer_main" else "main"
+                                        currentScreen = when (user.userType) {
+                                            "FARMER" -> "farmer_main"
+                                            "ADMIN" -> "admin_main"
+                                            else -> "main"
+                                        }
                                     } else {
                                         android.widget.Toast.makeText(contextForToast, "Invalid email or password", android.widget.Toast.LENGTH_SHORT).show()
                                     }
@@ -79,10 +90,18 @@ class MainActivity : ComponentActivity() {
                                     val user = repository.getUserByEmail(email)
                                     user?.let {
                                         UserSession.currentUserId = it.id
-                                        UserSession.currentUserType = if (type == "FARMER") UserType.FARMER else UserType.BUYER
+                                        UserSession.currentUserType = when (type) {
+                                            "FARMER" -> UserType.FARMER
+                                            "ADMIN" -> UserType.ADMIN
+                                            else -> UserType.BUYER
+                                        }
                                         UserSession.isUserVerified = it.isVerified
                                         android.widget.Toast.makeText(contextForToast, "Account Created. Verified: ${it.isVerified}", android.widget.Toast.LENGTH_SHORT).show()
-                                        currentScreen = if (type == "FARMER") "farmer_main" else "main"
+                                        currentScreen = when (type) {
+                                            "FARMER" -> "farmer_main"
+                                            "ADMIN" -> "admin_main"
+                                            else -> "main"
+                                        }
                                     }
                                 }
                             },
@@ -101,6 +120,13 @@ class MainActivity : ComponentActivity() {
                             UserSession.currentUserId = null
                             UserSession.isUserVerified = false
                             currentScreen = "login" 
+                        })
+                    }
+                    "admin_main" -> {
+                        AdminDashboardScreen(onExit = {
+                            UserSession.currentUserId = null
+                            UserSession.isUserVerified = false
+                            currentScreen = "login"
                         })
                     }
                 }

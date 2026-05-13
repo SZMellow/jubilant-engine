@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -90,6 +91,9 @@ fun WeightSelector(
 @Composable
 fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: (Double) -> Unit) {
     var selectedKilos by remember(product.id) { mutableStateOf(1.0) }
+    val safeImageRes = remember(product.name) {
+        getDrawableForProductName(product.name, product.category.iconRes)
+    }
 
     Box(
         modifier = Modifier
@@ -109,7 +113,7 @@ fun ProductDetailScreen(product: Product, onBack: () -> Unit, onAddToCart: (Doub
             // Image Header
             Box(modifier = Modifier.fillMaxWidth().height(350.dp)) {
                 Image(
-                    painter = painterResource(id = product.imageRes),
+                    painter = painterResource(id = safeImageRes),
                     contentDescription = product.name,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()

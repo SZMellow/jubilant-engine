@@ -12,7 +12,10 @@ data class UserEntity(
     val identificationProof: String? = null,
     @get:PropertyName("isVerified")
     @set:PropertyName("isVerified")
-    var isVerified: Boolean = false
+    var isVerified: Boolean = false,
+    @get:PropertyName("isActive")
+    @set:PropertyName("isActive")
+    var isActive: Boolean = true
 )
 
 data class ProductEntity(
@@ -45,5 +48,7 @@ data class OrderEntity(
     val deliveryTime: String = "",
     val date: String = "",
     val status: String = "Active", // "Active", "Completed", "Cancelled"
-    val items: List<OrderItemEntity> = emptyList()
+    val items: List<OrderItemEntity> = emptyList(),
+    val priorityLevel: Int = 0,
+    val timestamp: Long = System.currentTimeMillis()
 )
