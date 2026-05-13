@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "738546537607",
+    "project_id": "mapaani-d6eac",
+    "storage_bucket": "mapaani-d6eac.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:738546537607:android:bdc15bf454dc1b6900d422",
+        "android_client_info": {
+          "package_name": "com.example.mapaani3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgneS_Uw7RwpRbTHzRuXErmCdWnR9G6Yw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
